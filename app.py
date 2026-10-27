@@ -25,7 +25,7 @@ def get_signal():
             if df.empty:
                 raise ValueError("Empty data")
         except:
-            return None # Both failed
+            return None 
     
     # 1. Time Filter (Rule 5)
     lagos_tz = pytz.timezone('Africa/Lagos')
@@ -41,34 +41,25 @@ def get_signal():
     box_low = float(asian_box['Low'].min().item())
     box_range = box_high - box_low
     
-    latest = df.iloc[-1]
-    current_price = float(latest['Close'].item())
-    
-    # Prop Firm Settings
-    sl_distance = 7.00
-    tp_distance = 20.00
+    # Use the open of the most recent candle for a more accurate recent price
+    current_price = float(df['Open'].iloc[-1].item())
     
     signal = "WAIT"
-    entry, sl, tp, reason = 0, 0, 0, ""
+    reason = ""
     
+    # Rule 3 & 4 Logic
     broke_up = df['High'].iloc[-10:].max().item() > box_high
     broke_down = df['Low'].iloc[-10:].min().item() < box_low
     
     if broke_up and broke_down and current_price < box_low:
-        if abs(current_price - box_low) < (box_range * 0.2):
+        if abs(current_price - box_low) < (box_range * 0.3): # Widened slightly for lag
             signal = "SELL (Retest)"
-            entry = current_price
-            sl = entry + sl_distance
-            tp = entry - tp_distance
-            reason = f"Fakeout above {box_high:.2f}, then broke down. Retesting box low for Short."
+            reason = f"Fakeout above {box_high:.2f}, then broke down. Price is retesting the Box Low."
             
     elif broke_down and broke_up and current_price > box_high:
-        if abs(current_price - box_high) < (box_range * 0.2):
+        if abs(current_price - box_high) < (box_range * 0.3): # Widened slightly for lag
             signal = "BUY (Retest)"
-            entry = current_price
-            sl = entry - sl_distance
-            tp = entry + tp_distance
-            reason = f"Fakeout below {box_low:.2f}, then broke up. Retesting box high for Long."
+            reason = f"Fakeout below {box_low:.2f}, then broke up. Price is retesting the Box High."
             
     else:
         reason = f"No clear setup. Box High: {box_high:.2f}, Box Low: {box_low:.2f}. Waiting for fakeout and retest."
@@ -79,9 +70,6 @@ def get_signal():
         "high": box_high,
         "low": box_low,
         "signal": signal,
-        "entry": entry,
-        "sl": sl,
-        "tp": tp,
         "reason": reason
     }
 
@@ -99,24 +87,23 @@ if st.button("🇬🇧 Scan London Breakout", use_container_width=True):
             st.subheader("Asian Session Box (00:00 - 07:00 UK)")
             st.write(f"**Box High:** ${result['high']:.2f}")
             st.write(f"**Box Low:** ${result['low']:.2f}")
-            st.write(f"**Current Live Price:** ${result['price']:.2f}")
+            st.write(f"**App Price (Delayed):** ${result['price']:.2f}")
             st.divider()
             
-            if "BUY" in result['signal']:
-                st.success(f"🔥 **{result['signal']} DETECTED**")
-                st.write(f"**Entry:** {result['entry']:.2f}")
-                st.write(f"**Stop Loss:** {result['sl']:.2f} (Risking $7)")
-                st.write(f"**Take Profit:** {result['tp']:.2f} (Targeting $20)")
-                st.info(f"**Why?** {result['reason']}")
-                st.warning("👉 Go to MT5 NOW and place the trade using YOUR broker's current price.")
+            if "BUY" in result['signal'] or "SELL" in result['signal']:
+                if "BUY" in result['signal']:
+                    st.success(f"🔥 **{result['signal']} DETECTED**")
+                else:
+                    st.error(f"🔥 **{result['signal']} DETECTED**")
                 
-            elif "SELL" in result['signal']:
-                st.error(f"🔥 **{result['signal']} DETECTED**")
-                st.write(f"**Entry:** {result['entry']:.2f}")
-                st.write(f"**Stop Loss:** {result['sl']:.2f} (Risking $7)")
-                st.write(f"**Take Profit:** {result['tp']:.2f} (Targeting $20)")
                 st.info(f"**Why?** {result['reason']}")
-                st.warning("👉 Go to MT5 NOW and place the trade using YOUR broker's current price.")
+                
+                st.error("🚨 **ACTION REQUIRED** 🚨")
+                st.write("1. Open your MT5 App immediately.")
+                st.write("2. Look at your broker's exact live price.")
+                st.write("3. Enter the trade on MT5.")
+                st.write("4. Set your Stop Loss to **$7 away** from your entry.")
+                st.write("5. Set your Take Profit to **$20 away** from your entry.")
                 
             else:
                 st.warning("⏳ **NO SIGNAL - WAIT**")
