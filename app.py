@@ -5,77 +5,58 @@ from datetime import datetime, timedelta
 import pytz
 import time
 
-st.set_page_config(page_title="T4F Terminal", page_icon="📊", layout="wide")
+st.set_page_config(page_title="Gold AI Analysis", page_icon="🪙", layout="wide")
 
 st.markdown("""
 <style>
-    /* Import Google Fonts for Typography */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-    /* Base Theme */
-    .stApp { background-color: #09090B; color: #FAFAFA; font-family: 'Inter', sans-serif; }
+    /* Base Dark/Gold Theme */
+    .stApp { background-color: #0A0A0A; color: #FFFFFF; font-family: 'Inter', sans-serif; }
     
     /* Hide Streamlit Branding */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* Ticker Header */
-    .ticker-bar {
-        background-color: #18181B; border-bottom: 1px solid #27272A;
-        padding: 10px 20px; display: flex; justify-content: space-between;
-        align-items: center; font-size: 12px; font-weight: 600; color: #A1A1AA;
-        margin-top: -60px; margin-bottom: 20px;
-    }
-    .ticker-green { color: #22C55E; }
-    
-    /* Dashboard Cards */
-    .metric-card {
-        background-color: #18181B; border: 1px solid #27272A;
-        border-radius: 12px; padding: 20px; text-align: center;
-    }
-    .metric-value {
-        font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 700; margin: 0;
-    }
-    .metric-label {
-        font-size: 11px; color: #A1A1AA; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px;
+    /* Top Ticker */
+    .live-ticker {
+        background-color: #121212; border: 1px solid #333; border-radius: 12px;
+        padding: 15px 20px; display: flex; justify-content: space-between;
+        align-items: center; margin-bottom: 20px;
     }
     
-    /* Action Button */
+    /* Card Style */
+    .epic-card {
+        background-color: #121212; border: 1px solid #2A2A2A;
+        border-radius: 16px; padding: 20px; margin-bottom: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+    
+    /* Gold Buttons */
     .stButton > button {
-        background: linear-gradient(180deg, #18181B 0%, #09090B 100%);
-        border: 1px solid #3F3F46; color: #FAFAFA; 
-        border-radius: 50px; padding: 15px 30px; font-weight: 600; font-size: 16px;
-        transition: all 0.2s; width: 100%; margin-top: 10px;
+        background: linear-gradient(90deg, #F2C94C 0%, #F2994A 100%);
+        color: #000000; font-weight: 800; font-size: 16px;
+        border: none; border-radius: 12px; padding: 15px;
+        transition: all 0.3s; width: 100%;
     }
-    .stButton > button:hover {
-        border-color: #22C55E; color: #22C55E;
+    .stButton > button:hover { opacity: 0.9; color: #000; }
+    
+    /* Signal Grids */
+    .signal-grid {
+        display: flex; gap: 10px; margin-top: 15px;
     }
-    
-    /* Signal Card */
-    .signal-card {
-        background-color: #18181B; border: 1px solid #27272A;
-        border-radius: 16px; padding: 25px; margin-top: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    .grid-box {
+        flex: 1; background: #1A1A1A; border-radius: 10px; padding: 10px; text-align: center;
+        border: 1px solid #333;
     }
-    .trade-badge-sell { background: #7F1D1D; color: #FCA5A5; padding: 6px 16px; border-radius: 8px; font-weight: 700; font-size: 14px; }
-    .trade-badge-buy { background: #14532D; color: #86EFAC; padding: 6px 16px; border-radius: 8px; font-weight: 700; font-size: 14px; }
-    
-    /* Price Data */
-    .data-row { display: flex; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid #27272A; }
-    .data-label { color: #A1A1AA; font-size: 14px; font-weight: 500; }
-    .data-value { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 700; }
-    
-    /* Account Info */
-    .account-box { background: #09090B; border: 1px solid #27272A; border-radius: 10px; padding: 15px; margin-top: 15px; }
-    .std-box { border-left: 3px solid #22C55E; }
-    .cent-box { border-left: 3px solid #EAB308; }
+    .grid-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px;}
+    .grid-val { font-size: 18px; font-weight: 800; margin-top: 5px; font-family: monospace;}
 
-    /* Waiting State */
-    .wait-container {
-        background-color: #18181B; border: 1px dashed #3F3F46;
-        border-radius: 16px; padding: 50px 20px; text-align: center; margin-top: 20px;
-    }
+    /* Buy / Sell Colors */
+    .c-buy { color: #00E676; }
+    .c-sell { color: #FF1744; }
+    .c-gold { color: #F2C94C; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -97,7 +78,6 @@ def check_time():
     now = datetime.now(lagos_tz)
     current_time = now.time()
     
-    # T4F Windows (Nigeria Time)
     w1_start = datetime.strptime("08:03", "%H:%M").time()
     w1_end = datetime.strptime("08:12", "%H:%M").time()
     w2_start = datetime.strptime("14:45", "%H:%M").time()
@@ -106,18 +86,7 @@ def check_time():
     in_w1 = w1_start <= current_time <= w1_end
     in_w2 = w2_start <= current_time <= w2_end
     
-    # Dynamic Session Text for Ticker
-    if in_w1:
-        session_text = "London Session (OPEN)"
-        session_color = "#22C55E"
-    elif in_w2:
-        session_text = "New York Session (OPEN)"
-        session_color = "#22C55E"
-    else:
-        session_text = "Market Closed"
-        session_color = "#EF4444"
-    
-    return {"now": now.strftime('%H:%M'), "active": in_w1 or in_w2, "session": session_text, "color": session_color}
+    return {"now": now.strftime('%H:%M'), "active": in_w1 or in_w2}
 
 def get_369_signal():
     df = yf.download("XAUUSD=X", period="2d", interval="15m", progress=False)
@@ -154,52 +123,29 @@ def get_1m_confirmation(direction):
     if direction == "BUY" and last_c['Close'] > prev_c['Open']: return True
     return False
 
-# --- DASHBOARD STATS ---
+# --- UI ---
 time_status = check_time()
 
-# --- DYNAMIC TICKER BAR ---
+# Top Ticker
 st.markdown(f"""
-<div class='ticker-bar'>
-    <div>XAUUSD <span class='ticker-green'>● LIVE</span></div>
-    <div style='color: {time_status["color"]};'>{time_status["session"]}</div>
-    <div>{time_status['now']} WAT</div>
-</div>
-""", unsafe_allow_html=True)
-
-st.markdown("<h2 style='font-size: 20px; font-weight: 700;'>Signal Terminal</h2>", unsafe_allow_html=True)
-
-wins = sum(1 for t in st.session_state.history if "Win" in t["Status"])
-losses = sum(1 for t in st.session_state.history if "Loss" in t["Status"])
-net_usd = (wins * 21) - (losses * 7)
-net_ngn = net_usd * 1500
-win_rate = (wins / (wins + losses) * 100) if (wins + losses) > 0 else 0
-
-st.markdown(f"""
-<div style='display: flex; gap: 12px; margin-bottom: 20px;'>
-    <div class='metric-card' style='flex: 1;'>
-        <p class='metric-value' style='color: #22C55E;'>${net_usd}</p>
-        <p class='metric-label'>Net Profit</p>
-    </div>
-    <div class='metric-card' style='flex: 1;'>
-        <p class='metric-value' style='color: #22C55E;'>₦{net_ngn:,.0f}</p>
-        <p class='metric-label'>Naira Value</p>
-    </div>
-    <div class='metric-card' style='flex: 1;'>
-        <p class='metric-value' style='color: #FAFAFA;'>{win_rate:.0f}%</p>
-        <p class='metric-label'>Win Rate</p>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# --- MAIN APP LOGIC ---
-if st.button("START AUTO-WATCH", use_container_width=True, key="start_btn"):
-    if not time_status['active']:
-        st.markdown(f"""
-        <div style='background-color: #271A1A; border: 1px solid #7F1D1D; border-radius: 10px; padding: 15px; margin-top: 15px;'>
-            <p style='color: #FCA5A5; font-weight: 600; margin: 0;'>Market Locked</p>
-            <p style='color: #A1A1AA; font-size: 13px; margin: 5px 0 0 0;'>Current time: {time_status['now']}. Please wait for the London or NY session (08:03 or 14:45).</p>
+<div class='live-ticker'>
+    <div style='display: flex; align-items: center; gap: 10px;'>
+        <span style='font-size: 24px;'>🪙</span>
+        <div>
+            <div style='font-size: 12px; color: #888;'>LIVE PRICE</div>
+            <div style='font-size: 20px; font-weight: 800; color: #F2C94C;'>XAUUSD</div>
         </div>
-        """, unsafe_allow_html=True)
+    </div>
+    <div style='text-align: right;'>
+        <div style='font-size: 24px; font-weight: 800;'>4055.51</div>
+        <div style='font-size: 12px; color: #00E676;'>↗ spread 0.08</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+if st.button("⚡ START AUTO-WATCH", use_container_width=True):
+    if not time_status['active']:
+        st.error(f"🔒 Market is Locked. Current Time: {time_status['now']}. Please come back at 08:03 or 14:45.")
     else:
         placeholder = st.empty()
         signal_found = False
@@ -209,12 +155,7 @@ if st.button("START AUTO-WATCH", use_container_width=True, key="start_btn"):
             elapsed = (datetime.now() - start_time).seconds / 60
             if elapsed > 10: 
                 with placeholder.container():
-                    st.markdown("""
-                    <div class='wait-container'>
-                        <h2 style='color: #A1A1AA;'>Session Ended</h2>
-                        <p style='color: #52525B; font-size: 14px;'>No valid setup found in this window.</p>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    st.warning("⏳ **Session Ended.** No valid setup found in this window. Wait for the next session.")
                 break
                 
             with placeholder.container():
@@ -228,49 +169,41 @@ if st.button("START AUTO-WATCH", use_container_width=True, key="start_btn"):
                             
                             std_sl = entry + 7.00
                             std_tp = entry - 21.00
-                            
                             cent_sl = entry + 1.00
                             cent_tp = entry - 10.00
                             
                             st.markdown(f"""
-                            <div class='signal-card'>
-                                <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;'>
+                            <div class='epic-card'>
+                                <div style='display: flex; justify-content: space-between; align-items: center;'>
                                     <div>
-                                        <h1 style='margin: 0; font-size: 24px; font-weight: 800; font-family: "JetBrains Mono", monospace;'>XAUUSD</h1>
-                                        <p style='color: #A1A1AA; margin: 0; font-size: 13px;'>T4F 369 • M15</p>
+                                        <h2 style='margin: 0; font-size: 24px;'>XAUUSD</h2>
+                                        <p style='margin: 0; color: #888;'>T4F 369 Math</p>
                                     </div>
-                                    <div class='trade-badge-sell'>SELL</div>
+                                    <div style='background: #FF1744; color: white; padding: 8px 16px; border-radius: 8px; font-weight: bold;'>SELL</div>
                                 </div>
                                 
-                                <div class='data-row' style='border-top: 1px solid #27272A;'>
-                                    <span class='data-label'>Entry Price</span>
-                                    <span class='data-value' style='color: #FAFAFA;'>{entry:.2f}</span>
-                                </div>
-                                <div class='data-row'>
-                                    <span class='data-label'>Stop Loss</span>
-                                    <span class='data-value' style='color: #EF4444;'>{std_sl:.2f}</span>
-                                </div>
-                                <div class='data-row'>
-                                    <span class='data-label'>Take Profit</span>
-                                    <span class='data-value' style='color: #22C55E;'>{std_tp:.2f}</span>
+                                <div class='signal-grid'>
+                                    <div class='grid-box'>
+                                        <div class='grid-label'>Entry</div>
+                                        <div class='grid-val'>{entry:.2f}</div>
+                                    </div>
+                                    <div class='grid-box'>
+                                        <div class='grid-label'>Stop Loss</div>
+                                        <div class='grid-val c-sell'>{std_sl:.2f}</div>
+                                    </div>
+                                    <div class='grid-box'>
+                                        <div class='grid-label'>Target</div>
+                                        <div class='grid-val c-buy'>{std_tp:.2f}</div>
+                                    </div>
                                 </div>
                                 
-                                <div style='margin-top: 25px;'>
-                                    <div class='account-box std-box'>
-                                        <div style='display: flex; justify-content: space-between;'>
-                                            <span style='color: #22C55E; font-weight: 600; font-size: 13px;'>NairaTrader (Standard)</span>
-                                            <span style='color: #FAFAFA; font-weight: 600; font-size: 13px;'>0.01 Lots</span>
-                                        </div>
-                                        <p style='margin: 8px 0 0 0; font-size: 13px; color: #A1A1AA;'>SL: <b>{std_sl:.2f}</b> ($7) | TP: <b>{std_tp:.2f}</b> ($21)</p>
-                                    </div>
-                                    
-                                    <div class='account-box cent-box'>
-                                        <div style='display: flex; justify-content: space-between;'>
-                                            <span style='color: #EAB308; font-weight: 600; font-size: 13px;'>Cent Account</span>
-                                            <span style='color: #FAFAFA; font-weight: 600; font-size: 13px;'>1.00 Lots</span>
-                                        </div>
-                                        <p style='margin: 8px 0 0 0; font-size: 13px; color: #A1A1AA;'>SL: <b>{cent_sl:.2f}</b> (100c) | TP: <b>{cent_tp:.2f}</b> (1000c)</p>
-                                    </div>
+                                <div style='margin-top: 20px; background: #1A1A1A; padding: 15px; border-radius: 12px;'>
+                                    <p style='margin: 0; color: #00E676; font-weight: bold;'>Standard (NairaTrader)</p>
+                                    <p style='margin: 5px 0 0 0; font-size: 14px; color: #ccc;'>Lot Size: 0.01 | SL: {std_sl:.2f} | TP: {std_tp:.2f}</p>
+                                </div>
+                                <div style='margin-top: 10px; background: #1A1A1A; padding: 15px; border-radius: 12px;'>
+                                    <p style='margin: 0; color: #F2C94C; font-weight: bold;'>Cent Account</p>
+                                    <p style='margin: 5px 0 0 0; font-size: 14px; color: #ccc;'>Lot Size: 1.00 | SL: {cent_sl:.2f} (100c) | TP: {cent_tp:.2f} (1000c)</p>
                                 </div>
                             </div>
                             """, unsafe_allow_html=True)
@@ -285,49 +218,41 @@ if st.button("START AUTO-WATCH", use_container_width=True, key="start_btn"):
                             
                             std_sl = entry - 7.00
                             std_tp = entry + 21.00
-                            
                             cent_sl = entry - 1.00
                             cent_tp = entry + 10.00
                             
                             st.markdown(f"""
-                            <div class='signal-card'>
-                                <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;'>
+                            <div class='epic-card'>
+                                <div style='display: flex; justify-content: space-between; align-items: center;'>
                                     <div>
-                                        <h1 style='margin: 0; font-size: 24px; font-weight: 800; font-family: "JetBrains Mono", monospace;'>XAUUSD</h1>
-                                        <p style='color: #A1A1AA; margin: 0; font-size: 13px;'>T4F 369 • M15</p>
+                                        <h2 style='margin: 0; font-size: 24px;'>XAUUSD</h2>
+                                        <p style='margin: 0; color: #888;'>T4F 369 Math</p>
                                     </div>
-                                    <div class='trade-badge-buy'>BUY</div>
+                                    <div style='background: #00E676; color: black; padding: 8px 16px; border-radius: 8px; font-weight: bold;'>BUY</div>
                                 </div>
                                 
-                                <div class='data-row' style='border-top: 1px solid #27272A;'>
-                                    <span class='data-label'>Entry Price</span>
-                                    <span class='data-value' style='color: #FAFAFA;'>{entry:.2f}</span>
-                                </div>
-                                <div class='data-row'>
-                                    <span class='data-label'>Stop Loss</span>
-                                    <span class='data-value' style='color: #EF4444;'>{std_sl:.2f}</span>
-                                </div>
-                                <div class='data-row'>
-                                    <span class='data-label'>Take Profit</span>
-                                    <span class='data-value' style='color: #22C55E;'>{std_tp:.2f}</span>
+                                <div class='signal-grid'>
+                                    <div class='grid-box'>
+                                        <div class='grid-label'>Entry</div>
+                                        <div class='grid-val'>{entry:.2f}</div>
+                                    </div>
+                                    <div class='grid-box'>
+                                        <div class='grid-label'>Stop Loss</div>
+                                        <div class='grid-val c-sell'>{std_sl:.2f}</div>
+                                    </div>
+                                    <div class='grid-box'>
+                                        <div class='grid-label'>Target</div>
+                                        <div class='grid-val c-buy'>{std_tp:.2f}</div>
+                                    </div>
                                 </div>
                                 
-                                <div style='margin-top: 25px;'>
-                                    <div class='account-box std-box'>
-                                        <div style='display: flex; justify-content: space-between;'>
-                                            <span style='color: #22C55E; font-weight: 600; font-size: 13px;'>NairaTrader (Standard)</span>
-                                            <span style='color: #FAFAFA; font-weight: 600; font-size: 13px;'>0.01 Lots</span>
-                                        </div>
-                                        <p style='margin: 8px 0 0 0; font-size: 13px; color: #A1A1AA;'>SL: <b>{std_sl:.2f}</b> ($7) | TP: <b>{std_tp:.2f}</b> ($21)</p>
-                                    </div>
-                                    
-                                    <div class='account-box cent-box'>
-                                        <div style='display: flex; justify-content: space-between;'>
-                                            <span style='color: #EAB308; font-weight: 600; font-size: 13px;'>Cent Account</span>
-                                            <span style='color: #FAFAFA; font-weight: 600; font-size: 13px;'>1.00 Lots</span>
-                                        </div>
-                                        <p style='margin: 8px 0 0 0; font-size: 13px; color: #A1A1AA;'>SL: <b>{cent_sl:.2f}</b> (100c) | TP: <b>{cent_tp:.2f}</b> (1000c)</p>
-                                    </div>
+                                <div style='margin-top: 20px; background: #1A1A1A; padding: 15px; border-radius: 12px;'>
+                                    <p style='margin: 0; color: #00E676; font-weight: bold;'>Standard (NairaTrader)</p>
+                                    <p style='margin: 5px 0 0 0; font-size: 14px; color: #ccc;'>Lot Size: 0.01 | SL: {std_sl:.2f} | TP: {std_tp:.2f}</p>
+                                </div>
+                                <div style='margin-top: 10px; background: #1A1A1A; padding: 15px; border-radius: 12px;'>
+                                    <p style='margin: 0; color: #F2C94C; font-weight: bold;'>Cent Account</p>
+                                    <p style='margin: 5px 0 0 0; font-size: 14px; color: #ccc;'>Lot Size: 1.00 | SL: {cent_sl:.2f} (100c) | TP: {cent_tp:.2f} (1000c)</p>
                                 </div>
                             </div>
                             """, unsafe_allow_html=True)
@@ -337,28 +262,12 @@ if st.button("START AUTO-WATCH", use_container_width=True, key="start_btn"):
 
                 if not signal_found:
                     st.markdown(f"""
-                    <div class='wait-container'>
-                        <h2 style='color: #22C55E; font-size: 16px; font-weight: 600; margin-bottom: 10px;'>Watching Market</h2>
-                        <p style='font-family: "JetBrains Mono", monospace; font-size: 28px; font-weight: 700; color: #FAFAFA; margin: 0;'>${signal['price']:.2f}</p>
-                        <p style='color: #52525B; font-size: 12px; margin-top: 15px;'>Scanning every 3 seconds. Do not close this page.</p>
+                    <div class='epic-card' style='text-align: center; border-style: dashed;'>
+                        <h3 style='color: #F2C94C;'>WATCHING MARKET...</h3>
+                        <p style='font-size: 32px; font-weight: 800; margin: 10px 0;'>${signal['price']:.2f}</p>
+                        <p style='color: #888; font-size: 14px;'>Scanning every 3 seconds. Auto-stops when session ends.</p>
                     </div>
                     """, unsafe_allow_html=True)
             
             if not signal_found:
                 time.sleep(3)
-
-st.divider()
-st.markdown("<h3 style='font-size: 16px; font-weight: 600; color: #A1A1AA;'>Signal History</h3>", unsafe_allow_html=True)
-
-if len(st.session_state.history) == 0:
-    st.markdown("""
-    <div style='border: 1px dashed #27272A; border-radius: 12px; padding: 30px; text-align: center;'>
-        <p style='color: #52525B; font-size: 14px; margin: 0;'>No signals generated today.</p>
-    </div>
-    """, unsafe_allow_html=True)
-else:
-    df_history = pd.DataFrame(st.session_state.history)
-    st.dataframe(df_history, use_container_width=True)
-    if st.button("Clear History"):
-        st.session_state.history = []
-        st.rerun()
