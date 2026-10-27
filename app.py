@@ -79,7 +79,6 @@ def check_time():
     
     return {"now": now.strftime('%H:%M'), "active": in_w1 or in_w2}
 
-# This function fetches the REAL live price
 def get_live_price():
     df = yf.download("XAUUSD=X", period="1d", interval="1m", progress=False)
     if df.empty: 
@@ -126,10 +125,9 @@ def get_1m_confirmation(direction):
 st.markdown("### 📡 Live Market")
 col1, col2 = st.columns([2, 1])
 
+live_price = get_live_price()
+
 with col1:
-    # We fetch the actual price here
-    live_price = get_live_price()
-    
     st.markdown(f"""
     <div class='live-ticker'>
         <div style='display: flex; align-items: center; gap: 10px;'>
