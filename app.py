@@ -79,17 +79,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- LIVE TICKER BAR ---
-st.markdown("""
-<div class='ticker-bar'>
-    <div>XAUUSD <span class='ticker-green'>● LIVE</span></div>
-    <div>London Session</div>
-    <div>12ms <span style='color:#22C55E;'>●</span></div>
-</div>
-""", unsafe_allow_html=True)
-
-st.markdown("<h2 style='font-size: 20px; font-weight: 700;'>Signal Terminal</h2>", unsafe_allow_html=True)
-
 if 'history' not in st.session_state:
     st.session_state.history = []
 
@@ -108,6 +97,7 @@ def check_time():
     now = datetime.now(lagos_tz)
     current_time = now.time()
     
+    # T4F Windows (Nigeria Time)
     w1_start = datetime.strptime("08:03", "%H:%M").time()
     w1_end = datetime.strptime("08:12", "%H:%M").time()
     w2_start = datetime.strptime("14:45", "%H:%M").time()
@@ -116,7 +106,18 @@ def check_time():
     in_w1 = w1_start <= current_time <= w1_end
     in_w2 = w2_start <= current_time <= w2_end
     
-    return {"now": now.strftime('%H:%M'), "active": in_w1 or in_w2}
+    # Dynamic Session Text for Ticker
+    if in_w1:
+        session_text = "London Session (OPEN)"
+        session_color = "#22C55E"
+    elif in_w2:
+        session_text = "New York Session (OPEN)"
+        session_color = "#22C55E"
+    else:
+        session_text = "Market Closed"
+        session_color = "#EF4444"
+    
+    return {"now": now.strftime('%H:%M'), "active": in_w1 or in_w2, "session": session_text, "color": session_color}
 
 def get_369_signal():
     df = yf.download("XAUUSD=X", period="2d", interval="15m", progress=False)
@@ -154,6 +155,19 @@ def get_1m_confirmation(direction):
     return False
 
 # --- DASHBOARD STATS ---
+time_status = check_time()
+
+# --- DYNAMIC TICKER BAR ---
+st.markdown(f"""
+<div class='ticker-bar'>
+    <div>XAUUSD <span class='ticker-green'>● LIVE</span></div>
+    <div style='color: {time_status["color"]};'>{time_status["session"]}</div>
+    <div>{time_status['now']} WAT</div>
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown("<h2 style='font-size: 20px; font-weight: 700;'>Signal Terminal</h2>", unsafe_allow_html=True)
+
 wins = sum(1 for t in st.session_state.history if "Win" in t["Status"])
 losses = sum(1 for t in st.session_state.history if "Loss" in t["Status"])
 net_usd = (wins * 21) - (losses * 7)
@@ -178,15 +192,12 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # --- MAIN APP LOGIC ---
-time_status = check_time()
-
-if st.button("⚡ START AUTO-WATCH", use_container_width=True, key="start_btn"):
+if st.button("START AUTO-WATCH", use_container_width=True, key="start_btn"):
     if not time_status['active']:
-        # Professional Alert Box
         st.markdown(f"""
         <div style='background-color: #271A1A; border: 1px solid #7F1D1D; border-radius: 10px; padding: 15px; margin-top: 15px;'>
             <p style='color: #FCA5A5; font-weight: 600; margin: 0;'>Market Locked</p>
-            <p style='color: #A1A1AA; font-size: 13px; margin: 5px 0 0 0;'>Current time: {time_status['now']}. Please wait for the London or NY session.</p>
+            <p style='color: #A1A1AA; font-size: 13px; margin: 5px 0 0 0;'>Current time: {time_status['now']}. Please wait for the London or NY session (08:03 or 14:45).</p>
         </div>
         """, unsafe_allow_html=True)
     else:
