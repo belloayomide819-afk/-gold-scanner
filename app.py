@@ -14,7 +14,7 @@ st.sidebar.header("Manual Settings")
 manual_tf = st.sidebar.selectbox("Select Timeframe", ["15m", "1h"])
 
 def get_signal(timeframe):
-    # Map timeframe for Yahoo Finance (GC=F is Gold Futures, highly accurate)
+    # Map timeframe for Yahoo Finance
     interval = "15m" if timeframe == "15m" else "1h"
     
     # Fetch Data
@@ -46,19 +46,23 @@ def get_signal(timeframe):
     recent_low = df['Low'].rolling(window=20).min().iloc[-1]
     recent_high = df['High'].rolling(window=20).max().iloc[-1]
     
+    # --- FIXED DATA EXTRACTION HERE ---
     latest = df.iloc[-1]
-    current_price = float(latest['Close'])
-    rsi = float(latest['RSI'])
-    ema50 = float(latest['EMA50'])
-    ema200 = float(latest['EMA200'])
-    atr = float(latest['ATR'])
+    current_price = float(latest['Close'].item())
+    rsi = float(latest['RSI'].item())
+    ema50 = float(latest['EMA50'].item())
+    ema200 = float(latest['EMA200'].item())
+    atr = float(latest['ATR'].item())
+    recent_low_val = float(recent_low.item())
+    recent_high_val = float(recent_high.item())
+    # ----------------------------------
     
     # Logic
     signal = "WAIT"
     entry, sl, tp, reason = 0, 0, 0, ""
     
     # Buy Edge
-    if current_price <= (recent_low + (atr * 0.5)) and ema50 > ema200 and rsi < 45:
+    if current_price <= (recent_low_val + (atr * 0.5)) and ema50 > ema200 and rsi < 45:
         signal = "BUY"
         entry = current_price
         sl = entry - (atr * 1.5)
@@ -66,7 +70,7 @@ def get_signal(timeframe):
         reason = "Price at Liquidity Support, Trend is UP (EMA50>200), RSI is low."
         
     # Sell Edge
-    elif current_price >= (recent_high - (atr * 0.5)) and ema50 < ema200 and rsi > 55:
+    elif current_price >= (recent_high_val - (atr * 0.5)) and ema50 < ema200 and rsi > 55:
         signal = "SELL"
         entry = current_price
         sl = entry + (atr * 1.5)
@@ -78,8 +82,8 @@ def get_signal(timeframe):
 
     return {
         "price": current_price,
-        "low": recent_low,
-        "high": recent_high,
+        "low": recent_low_val,
+        "high": recent_high_val,
         "rsi": rsi,
         "signal": signal,
         "entry": entry,
