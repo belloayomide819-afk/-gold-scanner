@@ -16,7 +16,6 @@ st.markdown("""
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* Dashboard Cards */
     .metric-card {
         background-color: #18181B; border: 1px solid #27272A;
         border-radius: 12px; padding: 20px; text-align: center;
@@ -24,7 +23,6 @@ st.markdown("""
     .metric-value { font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 700; margin: 0; }
     .metric-label { font-size: 11px; color: #A1A1AA; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px; }
     
-    /* Action Button */
     .stButton > button {
         background: linear-gradient(90deg, #F2C94C 0%, #F2994A 100%);
         color: #000000; font-weight: 800; font-size: 16px;
@@ -33,14 +31,12 @@ st.markdown("""
     }
     .stButton > button:hover { opacity: 0.9; color: #000; }
     
-    /* Live Price Ticker */
     .live-ticker {
         background-color: #121212; border: 1px solid #333; border-radius: 12px;
         padding: 15px 20px; display: flex; justify-content: space-between;
         align-items: center; margin-bottom: 20px;
     }
     
-    /* Signal Card */
     .signal-card { background-color: #18181B; border: 1px solid #27272A; border-radius: 16px; padding: 25px; margin-top: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
     .trade-badge-sell { background: #7F1D1D; color: #FCA5A5; padding: 6px 16px; border-radius: 8px; font-weight: 700; font-size: 14px; }
     .trade-badge-buy { background: #14532D; color: #86EFAC; padding: 6px 16px; border-radius: 8px; font-weight: 700; font-size: 14px; }
@@ -83,6 +79,14 @@ def check_time():
     
     return {"now": now.strftime('%H:%M'), "active": in_w1 or in_w2}
 
+# This function fetches the REAL live price
+def get_live_price():
+    df = yf.download("XAUUSD=X", period="1d", interval="1m", progress=False)
+    if df.empty: 
+        df = yf.download("GC=F", period="1d", interval="1m", progress=False)
+    if df.empty: return 0.0
+    return float(df['Close'].iloc[-1].item())
+
 def get_369_signal():
     df = yf.download("XAUUSD=X", period="2d", interval="15m", progress=False)
     if df.empty: df = yf.download("GC=F", period="2d", interval="15m", progress=False)
@@ -118,11 +122,15 @@ def get_1m_confirmation(direction):
     if direction == "BUY" and last_c['Close'] > prev_c['Open']: return True
     return False
 
-# --- LIVE PRICE TICKER ---
+# --- LIVE PRICE SECTION ---
 st.markdown("### 📡 Live Market")
 col1, col2 = st.columns([2, 1])
+
 with col1:
-    st.markdown("""
+    # We fetch the actual price here
+    live_price = get_live_price()
+    
+    st.markdown(f"""
     <div class='live-ticker'>
         <div style='display: flex; align-items: center; gap: 10px;'>
             <span style='font-size: 24px;'>🪙</span>
@@ -132,11 +140,12 @@ with col1:
             </div>
         </div>
         <div style='text-align: right;'>
-            <div style='font-size: 24px; font-weight: 800;'>4055.51</div>
+            <div style='font-size: 24px; font-weight: 800;'>{live_price:.2f}</div>
             <div style='font-size: 12px; color: #00E676;'>↗ spread 0.08</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
+
 with col2:
     if st.button("🔄 Refresh Price"):
         st.rerun()
