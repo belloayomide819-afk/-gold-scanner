@@ -5,28 +5,66 @@ from datetime import datetime, timedelta
 import pytz
 import time
 
-st.set_page_config(page_title="T4F Terminal", page_icon="📊", layout="wide")
+st.set_page_config(page_title="T4F Terminal", page_icon="◈", layout="wide")
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@700&display=swap');
-    .stApp { background-color: #09090B; color: #FAFAFA; font-family: 'Inter', sans-serif; }
+    
+    /* Global Base */
+    .stApp { background-color: #050505; color: #FAFAFA; font-family: 'Inter', sans-serif; }
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
-    .metric-card { background-color: #18181B; border: 1px solid #27272A; border-radius: 12px; padding: 20px; text-align: center; }
-    .metric-value { font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 700; margin: 0; }
-    .metric-label { font-size: 11px; color: #A1A1AA; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px; }
-    .stButton > button { background: linear-gradient(90deg, #F2C94C 0%, #F2994A 100%); color: #000000; font-weight: 800; font-size: 16px; border: none; border-radius: 12px; padding: 15px; transition: all 0.3s; width: 100%; margin-top: 10px; }
-    .stButton > button:hover { opacity: 0.9; color: #000; }
-    .live-ticker { background-color: #121212; border: 1px solid #333; border-radius: 12px; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .signal-card { background-color: #18181B; border: 1px solid #27272A; border-radius: 16px; padding: 25px; margin-top: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-    .trade-badge-sell { background: #7F1D1D; color: #FCA5A5; padding: 6px 16px; border-radius: 8px; font-weight: 700; font-size: 14px; }
-    .trade-badge-buy { background: #14532D; color: #86EFAC; padding: 6px 16px; border-radius: 8px; font-weight: 700; font-size: 14px; }
-    .data-row { display: flex; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid #27272A; }
-    .data-label { color: #A1A1AA; font-size: 14px; font-weight: 500; }
-    .data-value { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 700; }
-    .account-box { background: #09090B; border: 1px solid #27272A; border-radius: 10px; padding: 15px; margin-top: 15px; }
-    .std-box { border-left: 3px solid #22C55E; }
-    .cent-box { border-left: 3px solid #EAB308; }
+    
+    /* Top Ticker Bar */
+    .ticker-bar {
+        background-color: #0A0A0A; border-bottom: 1px solid #1F1F1F;
+        padding: 12px 20px; display: flex; justify-content: space-between;
+        align-items: center; font-size: 12px; font-weight: 600; color: #A1A1AA;
+        margin-top: -60px; margin-bottom: 25px;
+    }
+    .ticker-green { color: #22C55E; }
+    .ticker-red { color: #EF4444; }
+    
+    /* Dashboard Metrics */
+    .metric-card {
+        background-color: #0A0A0A; border: 1px solid #1F1F1F;
+        border-radius: 12px; padding: 20px; text-align: center;
+    }
+    .metric-value { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 700; margin: 0; }
+    .metric-label { font-size: 11px; color: #71717A; text-transform: uppercase; letter-spacing: 1.5px; margin-top: 8px; font-weight: 600;}
+    
+    /* Action Button */
+    .stButton > button {
+        background: #FAFAFA; color: #050505; 
+        border: none; border-radius: 8px; padding: 15px 30px; 
+        font-weight: 700; font-size: 15px; transition: all 0.2s; 
+        width: 100%; margin-top: 10px; letter-spacing: 1px;
+    }
+    .stButton > button:hover { background: #D4D4D8; color: #050505; }
+    
+    /* Signal Card */
+    .signal-card { 
+        background-color: #0A0A0A; border: 1px solid #1F1F1F; 
+        border-radius: 12px; padding: 25px; margin-top: 20px; 
+    }
+    .trade-badge-sell { background: #270C0C; color: #EF4444; border: 1px solid #7F1D1D; padding: 6px 16px; border-radius: 6px; font-weight: 700; font-size: 13px; letter-spacing: 1px;}
+    .trade-badge-buy { background: #0A1F13; color: #22C55E; border: 1px solid #14532D; padding: 6px 16px; border-radius: 6px; font-weight: 700; font-size: 13px; letter-spacing: 1px;}
+    
+    /* Data Rows */
+    .data-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #1F1F1F; }
+    .data-label { color: #71717A; font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px;}
+    .data-value { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; }
+    
+    /* Account Boxes */
+    .account-box { background: #111111; border: 1px solid #1F1F1F; border-radius: 8px; padding: 16px; margin-top: 12px; }
+    .std-box { border-left: 2px solid #22C55E; }
+    .cent-box { border-left: 2px solid #EAB308; }
+    
+    /* Waiting State */
+    .wait-container {
+        background-color: #0A0A0A; border: 1px dashed #27272A;
+        border-radius: 12px; padding: 40px 20px; text-align: center; margin-top: 20px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -53,24 +91,35 @@ def check_time():
     w2_end = datetime.strptime("15:08", "%H:%M").time()
     in_w1 = w1_start <= current_time <= w1_end
     in_w2 = w2_start <= current_time <= w2_end
-    return {"now": now.strftime('%H:%M'), "active": in_w1 or in_w2}
+    
+    if in_w1 or in_w2:
+        session_text = "SESSION OPEN"
+        session_class = "ticker-green"
+    else:
+        session_text = "MARKET CLOSED"
+        session_class = "ticker-red"
+        
+    return {"now": now.strftime('%H:%M'), "active": in_w1 or in_w2, "session_text": session_text, "session_class": session_class}
 
 def get_live_price():
-    df = yf.download("XAUUSD=X", period="1d", interval="1m", progress=False)
-    if df.empty: df = yf.download("GC=F", period="1d", interval="1m", progress=False)
-    if df.empty: return 0.0
-    return float(df['Close'].iloc[-1].item())
+    try:
+        df = yf.download("XAUUSD=X", period="1d", interval="1m", progress=False)
+        if df.empty: df = yf.download("GC=F", period="1d", interval="1m", progress=False)
+        if df.empty: return 0.0
+        return float(df['Close'].iloc[-1].item())
+    except:
+        return 0.0
 
-def get_369_signal():
+def get_trap_signal():
     df = yf.download("XAUUSD=X", period="2d", interval="15m", progress=False)
     if df.empty: df = yf.download("GC=F", period="2d", interval="15m", progress=False)
     if df.empty: return None
+        
+    phase3_open = float(df['Open'].iloc[-1].item()) 
+    current_price = float(df['Close'].iloc[-1].item())
     
-    # Calculate recent swing high/low for dynamic SL
     recent_high = float(df['High'].rolling(window=20).max().iloc[-1].item())
     recent_low = float(df['Low'].rolling(window=20).min().iloc[-1].item())
-    current_price = float(df['Close'].iloc[-1].item())
-    phase3_open = float(df['Open'].iloc[-1].item())
     
     sell_level = recent_high - get_digital_root(recent_high)
     buy_level = recent_low + get_digital_root(recent_low)
@@ -96,50 +145,46 @@ def get_1m_confirmation(direction):
     if direction == "BUY" and last_c['Close'] > prev_c['Open']: return True
     return False
 
-# --- LIVE PRICE ---
-st.markdown("### 📡 Live Market")
-col1, col2 = st.columns([2, 1])
+# --- TOP TICKER BAR ---
+time_status = check_time()
 live_price = get_live_price()
-with col1:
-    st.markdown(f"""
-    <div class='live-ticker'>
-        <div style='display: flex; align-items: center; gap: 10px;'>
-            <span style='font-size: 24px;'>🪙</span>
-            <div><div style='font-size: 12px; color: #888;'>LIVE PRICE</div><div style='font-size: 20px; font-weight: 800; color: #F2C94C;'>XAUUSD</div></div>
-        </div>
-        <div style='text-align: right;'>
-            <div style='font-size: 24px; font-weight: 800;'>{live_price:.2f}</div>
-            <div style='font-size: 12px; color: #00E676;'>↗ spread 0.08</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-with col2:
-    if st.button("🔄 Refresh Price"):
-        st.rerun()
 
-# --- DASHBOARD ---
-st.markdown("### 📊 Performance")
+st.markdown(f"""
+<div class='ticker-bar'>
+    <div>XAUUSD <span class='ticker-green'>● LIVE</span></div>
+    <div class='{time_status["session_class"]}'>{time_status["session_text"]}</div>
+    <div>{time_status['now']} WAT</div>
+</div>
+""", unsafe_allow_html=True)
+
+# --- DASHBOARD STATS ---
+st.markdown("<h4 style='color: #71717A; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase;'>Account Performance</h4>", unsafe_allow_html=True)
+
 wins = sum(1 for t in st.session_state.history if "Win" in t["Status"])
 losses = sum(1 for t in st.session_state.history if "Loss" in t["Status"])
-net_usd = (wins * 21) - (losses * 7)
+net_usd = (wins * 21) - (losses * 7) 
 net_ngn = net_usd * 1500
 win_rate = (wins / (wins + losses) * 100) if (wins + losses) > 0 else 0
 
 st.markdown(f"""
-<div style='display: flex; gap: 12px; margin-bottom: 20px;'>
-    <div class='metric-card' style='flex: 1;'><p class='metric-value' style='color: #22C55E;'>${net_usd}</p><p class='metric-label'>Net Profit</p></div>
-    <div class='metric-card' style='flex: 1;'><p class='metric-value' style='color: #22C55E;'>₦{net_ngn:,.0f}</p><p class='metric-label'>Naira Value</p></div>
+<div style='display: flex; gap: 12px; margin-bottom: 25px;'>
+    <div class='metric-card' style='flex: 1;'><p class='metric-value' style='color: #FAFAFA;'>${net_usd}</p><p class='metric-label'>Net Profit</p></div>
+    <div class='metric-card' style='flex: 1;'><p class='metric-value' style='color: #FAFAFA;'>₦{net_ngn:,.0f}</p><p class='metric-label'>Naira Value</p></div>
     <div class='metric-card' style='flex: 1;'><p class='metric-value' style='color: #FAFAFA;'>{win_rate:.0f}%</p><p class='metric-label'>Win Rate</p></div>
 </div>
 """, unsafe_allow_html=True)
 
-# --- ENGINE ---
-st.markdown("### ⚡ Trading Engine")
-time_status = check_time()
+# --- MAIN LOGIC ---
+st.markdown("<h4 style='color: #71717A; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase;'>Terminal Engine</h4>", unsafe_allow_html=True)
 
-if st.button("START AUTO-WATCH", use_container_width=True):
+if st.button("INITIATE SCAN", use_container_width=True):
     if not time_status['active']:
-        st.error(f"🔒 **Market Locked.** Current time: {time_status['now']}. Please wait for the London or NY session (08:03 or 14:45).")
+        st.markdown(f"""
+        <div style='background-color: #270C0C; border: 1px solid #7F1D1D; border-radius: 8px; padding: 16px; margin-top: 15px;'>
+            <p style='color: #EF4444; font-weight: 700; font-size: 14px; margin: 0;'>EXECUTION LOCKED</p>
+            <p style='color: #A1A1AA; font-size: 13px; margin: 5px 0 0 0;'>Current time: {time_status['now']}. Please wait for the London (08:03) or NY (14:45) session.</p>
+        </div>
+        """, unsafe_allow_html=True)
     else:
         placeholder = st.empty()
         signal_found = False
@@ -148,11 +193,17 @@ if st.button("START AUTO-WATCH", use_container_width=True):
         while time_status['active'] and not signal_found:
             elapsed = (datetime.now() - start_time).seconds / 60
             if elapsed > 10: 
-                with placeholder.container(): st.warning("⏳ **Session Ended.** No valid setup found. Wait for next session.")
+                with placeholder.container(): 
+                    st.markdown("""
+                    <div class='wait-container'>
+                        <h3 style='color: #A1A1AA; margin: 0;'>SESSION ENDED</h3>
+                        <p style='color: #71717A; font-size: 13px; margin-top: 8px;'>No valid setups found in this window.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
                 break
                 
             with placeholder.container():
-                signal = get_369_signal()
+                signal = get_trap_signal()
                 
                 if signal:
                     if signal['bias'] == "SELL":
@@ -160,34 +211,49 @@ if st.button("START AUTO-WATCH", use_container_width=True):
                             signal_found = True
                             entry = signal['sell_entry']
                             
-                            # DYNAMIC SL (Uses swing high for safety)
-                            dynamic_sl = signal['swing_high'] + 1.00 # Just above the recent high
+                            # Trap Dynamic SL
+                            dynamic_sl = signal['swing_high'] + 1.50 
                             sl_dist = dynamic_sl - entry
-                            std_tp = entry - (sl_dist * 3) # 1:3 RR
-                            
-                            cent_sl = dynamic_sl
-                            cent_tp = std_tp
+                            std_tp = entry - (sl_dist * 3)
                             
                             st.markdown(f"""
                             <div class='signal-card'>
                                 <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;'>
-                                    <div><h1 style='margin: 0; font-size: 24px; font-weight: 800; font-family: "JetBrains Mono", monospace;'>XAUUSD</h1><p style='color: #A1A1AA; margin: 0; font-size: 13px;'>T4F 369 • Dynamic SL</p></div>
-                                    <div class='trade-badge-sell'>SELL</div>
+                                    <div>
+                                        <h2 style='margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 1px;'>XAUUSD</h2>
+                                        <p style='color: #71717A; margin: 2px 0 0 0; font-size: 12px; letter-spacing: 1px;'>TRAP & LIMIT</p>
+                                    </div>
+                                    <div class='trade-badge-sell'>SELL LIMIT</div>
                                 </div>
                                 
-                                <div class='data-row' style='border-top: 1px solid #27272A;'><span class='data-label'>Entry Price</span><span class='data-value' style='color: #FAFAFA;'>{entry:.2f}</span></div>
-                                <div class='data-row'><span class='data-label'>Stop Loss</span><span class='data-value' style='color: #EF4444;'>{dynamic_sl:.2f}</span></div>
-                                <div class='data-row'><span class='data-label'>Take Profit</span><span class='data-value' style='color: #22C55E;'>{std_tp:.2f}</span></div>
+                                <div class='data-row' style='border-top: 1px solid #1F1F1F;'>
+                                    <span class='data-label'>Entry Limit</span>
+                                    <span class='data-value' style='color: #FAFAFA;'>{entry:.2f}</span>
+                                </div>
+                                <div class='data-row'>
+                                    <span class='data-label'>Stop Loss</span>
+                                    <span class='data-value' style='color: #EF4444;'>{dynamic_sl:.2f}</span>
+                                </div>
+                                <div class='data-row'>
+                                    <span class='data-label'>Take Profit</span>
+                                    <span class='data-value' style='color: #22C55E;'>{std_tp:.2f}</span>
+                                </div>
                                 
                                 <div style='margin-top: 25px;'>
                                     <div class='account-box std-box'>
-                                        <div style='display: flex; justify-content: space-between;'><span style='color: #22C55E; font-weight: 600; font-size: 13px;'>NairaTrader (Standard)</span><span style='color: #FAFAFA; font-weight: 600; font-size: 13px;'>0.01 Lots</span></div>
-                                        <p style='margin: 8px 0 0 0; font-size: 13px; color: #A1A1AA;'>SL: <b>{dynamic_sl:.2f}</b> | TP: <b>{std_tp:.2f}</b></p>
+                                        <div style='display: flex; justify-content: space-between; margin-bottom: 8px;'>
+                                            <span style='color: #FAFAFA; font-weight: 600; font-size: 13px;'>Standard Account</span>
+                                            <span style='color: #71717A; font-weight: 600; font-size: 12px;'>0.01 LOTS</span>
+                                        </div>
+                                        <p style='margin: 0; font-size: 13px; color: #A1A1AA;'>SL: <b style='color:#FAFAFA;'>{dynamic_sl:.2f}</b> | TP: <b style='color:#FAFAFA;'>{std_tp:.2f}</b></p>
                                     </div>
                                     
                                     <div class='account-box cent-box'>
-                                        <div style='display: flex; justify-content: space-between;'><span style='color: #EAB308; font-weight: 600; font-size: 13px;'>Cent Account</span><span style='color: #FAFAFA; font-weight: 600; font-size: 13px;'>1.00 Lots</span></div>
-                                        <p style='margin: 8px 0 0 0; font-size: 13px; color: #A1A1AA;'>SL: <b>{cent_sl:.2f}</b> | TP: <b>{cent_tp:.2f}</b></p>
+                                        <div style='display: flex; justify-content: space-between; margin-bottom: 8px;'>
+                                            <span style='color: #FAFAFA; font-weight: 600; font-size: 13px;'>Cent Account</span>
+                                            <span style='color: #71717A; font-weight: 600; font-size: 12px;'>1.00 LOTS</span>
+                                        </div>
+                                        <p style='margin: 0; font-size: 13px; color: #A1A1AA;'>SL: <b style='color:#FAFAFA;'>{dynamic_sl:.2f}</b> | TP: <b style='color:#FAFAFA;'>{std_tp:.2f}</b></p>
                                     </div>
                                 </div>
                             </div>
@@ -201,34 +267,49 @@ if st.button("START AUTO-WATCH", use_container_width=True):
                             signal_found = True
                             entry = signal['buy_entry']
                             
-                            # DYNAMIC SL (Uses swing low for safety)
-                            dynamic_sl = signal['swing_low'] - 1.00
+                            # Trap Dynamic SL
+                            dynamic_sl = signal['swing_low'] - 1.50
                             sl_dist = entry - dynamic_sl
                             std_tp = entry + (sl_dist * 3)
-                            
-                            cent_sl = dynamic_sl
-                            cent_tp = std_tp
                             
                             st.markdown(f"""
                             <div class='signal-card'>
                                 <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;'>
-                                    <div><h1 style='margin: 0; font-size: 24px; font-weight: 800; font-family: "JetBrains Mono", monospace;'>XAUUSD</h1><p style='color: #A1A1AA; margin: 0; font-size: 13px;'>T4F 369 • Dynamic SL</p></div>
-                                    <div class='trade-badge-buy'>BUY</div>
+                                    <div>
+                                        <h2 style='margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 1px;'>XAUUSD</h2>
+                                        <p style='color: #71717A; margin: 2px 0 0 0; font-size: 12px; letter-spacing: 1px;'>TRAP & LIMIT</p>
+                                    </div>
+                                    <div class='trade-badge-buy'>BUY LIMIT</div>
                                 </div>
                                 
-                                <div class='data-row' style='border-top: 1px solid #27272A;'><span class='data-label'>Entry Price</span><span class='data-value' style='color: #FAFAFA;'>{entry:.2f}</span></div>
-                                <div class='data-row'><span class='data-label'>Stop Loss</span><span class='data-value' style='color: #EF4444;'>{dynamic_sl:.2f}</span></div>
-                                <div class='data-row'><span class='data-label'>Take Profit</span><span class='data-value' style='color: #22C55E;'>{std_tp:.2f}</span></div>
+                                <div class='data-row' style='border-top: 1px solid #1F1F1F;'>
+                                    <span class='data-label'>Entry Limit</span>
+                                    <span class='data-value' style='color: #FAFAFA;'>{entry:.2f}</span>
+                                </div>
+                                <div class='data-row'>
+                                    <span class='data-label'>Stop Loss</span>
+                                    <span class='data-value' style='color: #EF4444;'>{dynamic_sl:.2f}</span>
+                                </div>
+                                <div class='data-row'>
+                                    <span class='data-label'>Take Profit</span>
+                                    <span class='data-value' style='color: #22C55E;'>{std_tp:.2f}</span>
+                                </div>
                                 
                                 <div style='margin-top: 25px;'>
                                     <div class='account-box std-box'>
-                                        <div style='display: flex; justify-content: space-between;'><span style='color: #22C55E; font-weight: 600; font-size: 13px;'>NairaTrader (Standard)</span><span style='color: #FAFAFA; font-weight: 600; font-size: 13px;'>0.01 Lots</span></div>
-                                        <p style='margin: 8px 0 0 0; font-size: 13px; color: #A1A1AA;'>SL: <b>{dynamic_sl:.2f}</b> | TP: <b>{std_tp:.2f}</b></p>
+                                        <div style='display: flex; justify-content: space-between; margin-bottom: 8px;'>
+                                            <span style='color: #FAFAFA; font-weight: 600; font-size: 13px;'>Standard Account</span>
+                                            <span style='color: #71717A; font-weight: 600; font-size: 12px;'>0.01 LOTS</span>
+                                        </div>
+                                        <p style='margin: 0; font-size: 13px; color: #A1A1AA;'>SL: <b style='color:#FAFAFA;'>{dynamic_sl:.2f}</b> | TP: <b style='color:#FAFAFA;'>{std_tp:.2f}</b></p>
                                     </div>
                                     
                                     <div class='account-box cent-box'>
-                                        <div style='display: flex; justify-content: space-between;'><span style='color: #EAB308; font-weight: 600; font-size: 13px;'>Cent Account</span><span style='color: #FAFAFA; font-weight: 600; font-size: 13px;'>1.00 Lots</span></div>
-                                        <p style='margin: 8px 0 0 0; font-size: 13px; color: #A1A1AA;'>SL: <b>{cent_sl:.2f}</b> | TP: <b>{cent_tp:.2f}</b></p>
+                                        <div style='display: flex; justify-content: space-between; margin-bottom: 8px;'>
+                                            <span style='color: #FAFAFA; font-weight: 600; font-size: 13px;'>Cent Account</span>
+                                            <span style='color: #71717A; font-weight: 600; font-size: 12px;'>1.00 LOTS</span>
+                                        </div>
+                                        <p style='margin: 0; font-size: 13px; color: #A1A1AA;'>SL: <b style='color:#FAFAFA;'>{dynamic_sl:.2f}</b> | TP: <b style='color:#FAFAFA;'>{std_tp:.2f}</b></p>
                                     </div>
                                 </div>
                             </div>
@@ -239,23 +320,28 @@ if st.button("START AUTO-WATCH", use_container_width=True):
 
                 if not signal_found:
                     st.markdown(f"""
-                    <div class='signal-card' style='text-align: center; border-style: dashed;'>
-                        <h3 style='color: #22C55E;'>WATCHING MARKET...</h3>
-                        <p style='font-size: 32px; font-weight: 800; margin: 10px 0; font-family: monospace;'>${signal['price']:.2f}</p>
-                        <p style='color: #A1A1AA; font-size: 14px;'>Scanning every 3 seconds.</p>
+                    <div class='wait-container'>
+                        <h3 style='color: #22C55E; margin: 0; font-size: 16px; letter-spacing: 2px;'>SCANNING MARKET</h3>
+                        <p style='font-family: "JetBrains Mono", monospace; font-size: 36px; font-weight: 700; color: #FAFAFA; margin: 15px 0;'>{signal['price']:.2f}</p>
+                        <p style='color: #71717A; font-size: 13px; letter-spacing: 1px;'>Awaiting institutional trap sequence.</p>
                     </div>
                     """, unsafe_allow_html=True)
             
             if not signal_found:
                 time.sleep(3)
 
-# --- HISTORY ---
-st.markdown("### 📜 Trade History")
+# --- HISTORY TABLE ---
+st.markdown("<h4 style='color: #71717A; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 30px;'>Execution History</h4>", unsafe_allow_html=True)
+
 if len(st.session_state.history) == 0:
-    st.info("No signals generated today.")
+    st.markdown("""
+    <div style='border: 1px dashed #27272A; border-radius: 8px; padding: 20px; text-align: center;'>
+        <p style='color: #71717A; font-size: 13px; margin: 0; letter-spacing: 1px;'>NO SIGNALS GENERATED</p>
+    </div>
+    """, unsafe_allow_html=True)
 else:
     df_history = pd.DataFrame(st.session_state.history)
     st.dataframe(df_history, use_container_width=True)
-    if st.button("Clear History"):
+    if st.button("CLEAR LOGS"):
         st.session_state.history = []
         st.rerun()
