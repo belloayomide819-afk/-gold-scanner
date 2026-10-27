@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-st.set_page_config(page_title="T4F Sniper Pro", page_icon="🎯", layout="wide")
+st.set_page_config(page_title="T4F Confluence Sniper", page_icon="🛡️", layout="wide")
 
 st.markdown("""
 <style>
@@ -15,8 +15,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🎯 T4F Sniper Pro")
-st.write("Strict Math + 1M Momentum = 80% Win Rate")
+st.title("🛡️ T4F Confluence Sniper")
+st.write("T4F 369 + H1 Trendlines = High Probability")
 
 if 'history' not in st.session_state:
     st.session_state.history = []
@@ -36,7 +36,6 @@ def check_time():
     now = datetime.now(lagos_tz)
     current_time = now.time()
     
-    # Strict Windows
     w1_start = datetime.strptime("08:03", "%H:%M").time()
     w1_end = datetime.strptime("08:12", "%H:%M").time()
     w2_start = datetime.strptime("14:45", "%H:%M").time()
@@ -45,78 +44,65 @@ def check_time():
     in_w1 = w1_start <= current_time <= w1_end
     in_w2 = w2_start <= current_time <= w2_end
     
-    next_scan = (now + timedelta(minutes=3)).strftime('%H:%M')
-    
-    return {
-        "now": now.strftime('%H:%M'),
-        "in_w1": in_w1,
-        "in_w2": in_w2,
-        "active": in_w1 or in_w2,
-        "next_scan": next_scan
-    }
+    return {"now": now.strftime('%H:%M'), "active": in_w1 or in_w2}
 
-def get_signal():
-    # 1. Fetch 15M for Math
-    df_15m = yf.download("XAUUSD=X", period="2d", interval="15m", progress=False)
-    if df_15m.empty:
-         df_15m = yf.download("GC=F", period="2d", interval="15m", progress=False)
-    if df_15m.empty:
-        return {"status": "ERROR"}
+def get_trendline_bias():
+    df = yf.download("XAUUSD=X", period="10d", interval="1h", progress=False)
+    if df.empty: df = yf.download("GC=F", period="10d", interval="1h", progress=False)
+    if df.empty: return "NEUTRAL"
+
+    df['Swing_Low'] = df['Low'][(df['Low'].shift(1) > df['Low']) & (df['Low'].shift(-1) > df['Low'])]
+    df['Swing_High'] = df['High'][(df['High'].shift(1) < df['High']) & (df['High'].shift(-1) < df['High'])]
+    
+    recent_lows = df['Swing_Low'].dropna().tail(2)
+    recent_highs = df['Swing_High'].dropna().tail(2)
+    current_price = float(df['Close'].iloc[-1].item())
+    current_idx = len(df) - 1
+
+    # Check Support (Bullish Bias)
+    if len(recent_lows) == 2:
+        idx1, idx2 = df.index.get_loc(recent_lows.index[0]), df.index.get_loc(recent_lows.index[1])
+        price1, price2 = float(recent_lows.iloc[0]), float(recent_lows.iloc[1])
+        slope = (price2 - price1) / (idx2 - idx1)
+        projected = price1 + slope * (current_idx - idx1)
+        if abs(current_price - projected) <= 5.0: return "BUY"
+
+    # Check Resistance (Bearish Bias)
+    if len(recent_highs) == 2:
+        idx1, idx2 = df.index.get_loc(recent_highs.index[0]), df.index.get_loc(recent_highs.index[1])
+        price1, price2 = float(recent_highs.iloc[0]), float(recent_highs.iloc[1])
+        slope = (price2 - price1) / (idx2 - idx1)
+        projected = price1 + slope * (current_idx - idx1)
+        if abs(current_price - projected) <= 5.0: return "SELL"
         
-    df_15m['EMA50'] = df_15m['Close'].ewm(span=50, adjust=False).mean()
-    recent_high = float(df_15m['High'].rolling(window=20).max().iloc[-1].item())
-    recent_low = float(df_15m['Low'].rolling(window=20).min().iloc[-1].item())
-    current_price = float(df_15m['Close'].iloc[-1].item())
-    ema50 = float(df_15m['EMA50'].iloc[-1].item())
+    return "NEUTRAL"
+
+def get_t4f_signal():
+    df = yf.download("XAUUSD=X", period="2d", interval="15m", progress=False)
+    if df.empty: df = yf.download("GC=F", period="2d", interval="15m", progress=False)
+    if df.empty: return None
+        
+    recent_high = float(df['High'].rolling(window=20).max().iloc[-1].item())
+    recent_low = float(df['Low'].rolling(window=20).min().iloc[-1].item())
+    current_price = float(df['Close'].iloc[-1].item())
     
     step_high = get_digital_root(recent_high)
     step_low = get_digital_root(recent_low)
     
-    sell_entry = recent_high - step_high
-    buy_entry = recent_low + step_low
-    
-    # 2. Fetch 1M for Trigger
-    df_1m = yf.download("XAUUSD=X", period="1d", interval="1m", progress=False)
-    if df_1m.empty:
-        df_1m = yf.download("GC=F", period="1d", interval="1m", progress=False)
-        
-    m1_confirmed = False
-    if not df_1m.empty:
-        last_c = df_1m.iloc[-1]
-        prev_c = df_1m.iloc[-2]
-        # STRICT 1M CHECK
-        if current_price < ema50 and last_c['Close'] < prev_c['Open']:
-            m1_confirmed = True # Bearish
-        elif current_price > ema50 and last_c['Close'] > prev_c['Open']:
-            m1_confirmed = True # Bullish
-
     return {
-        "status": "ACTIVE",
         "price": current_price,
-        "sell_entry": sell_entry,
-        "buy_entry": buy_entry,
-        "show_sell": current_price < ema50,
-        "show_buy": current_price > ema50,
-        "m1_confirmed": m1_confirmed
+        "sell_entry": recent_high - step_high,
+        "buy_entry": recent_low + step_low
     }
 
 def update_history(current_price):
     for trade in st.session_state.history:
         if trade["Status"] == "Pending":
             entry = float(trade["Entry"])
-            sl = float(trade["SL"])
-            tp = float(trade["TP"])
-            
-            if trade["Type"] == "SELL" and current_price >= entry:
-                trade["Status"] = "Active"
-            elif trade["Type"] == "BUY" and current_price <= entry:
-                trade["Status"] = "Active"
-                
+            if trade["Type"] == "SELL" and current_price >= entry: trade["Status"] = "Active"
+            elif trade["Type"] == "BUY" and current_price <= entry: trade["Status"] = "Active"
         elif trade["Status"] == "Active":
-            entry = float(trade["Entry"])
-            sl = float(trade["SL"])
-            tp = float(trade["TP"])
-            
+            entry = float(trade["Entry"]); sl = float(trade["SL"]); tp = float(trade["TP"])
             if trade["Type"] == "SELL":
                 if current_price >= sl: trade["Status"] = "❌ Loss (SL)"
                 elif current_price <= tp: trade["Status"] = "✅ Win (TP)"
@@ -128,80 +114,73 @@ def update_history(current_price):
 time_status = check_time()
 
 col1, col2 = st.columns(2)
-with col1:
-    st.markdown(f"**Time:** `{time_status['now']}`")
+with col1: st.markdown(f"**Time:** `{time_status['now']}`")
 with col2:
-    if time_status['active']:
-        st.markdown("<h3 style='color: #00FFAA;'>🟢 OPEN</h3>", unsafe_allow_html=True)
-    else:
-        st.markdown("<h3 style='color: #FF4B4B;'>🔴 LOCKED</h3>", unsafe_allow_html=True)
+    if time_status['active']: st.markdown("<h3 style='color: #00FFAA;'>🟢 WINDOW OPEN</h3>", unsafe_allow_html=True)
+    else: st.markdown("<h3 style='color: #FF4B4B;'>🔴 WINDOW LOCKED</h3>", unsafe_allow_html=True)
 
 st.divider()
 
-if not time_status['active']:
-    st.warning("⏳ **WINDOW LOCKED. Come back at 08:03 or 14:45.**")
-else:
-    if st.button("🎯 SCAN FOR SIGNAL", use_container_width=True):
-        with st.spinner("Checking strict conditions..."):
-            result = get_signal()
-            
-        if result["status"] == "ERROR":
+if st.button("🎯 SCAN CONFLUENCE", use_container_width=True):
+    with st.spinner("Checking Trendlines + 369 Math..."):
+        
+        trend_bias = get_trendline_bias()
+        t4f = get_t4f_signal()
+        
+        if not t4f:
             st.error("Data error.")
         else:
-            update_history(result['price'])
+            update_history(t4f['price'])
             
-            # Check if we have a perfect setup
-            if result['show_sell'] and result['m1_confirmed']:
-                sell_sl = result['sell_entry'] + 7.00
-                sell_tp = result['sell_entry'] - 21.00
+            # CONFLUENCE LOGIC
+            # Only give Sell if Trendline is Bearish AND T4F level is close
+            if trend_bias == "SELL" and time_status['active']:
+                entry = t4f['sell_entry']
                 st.markdown(f"""
                 <div class='sell-card'>
-                    <h1>🔴 PLACE SELL LIMIT NOW</h1>
-                    <p class='big-font'>Entry: {result['sell_entry']:.2f}</p>
-                    <p><b>SL:</b> {sell_sl:.2f} | <b>TP:</b> {sell_tp:.2f}</p>
+                    <h1>🔴 CONFLUENCE SELL</h1>
+                    <p class='big-font'>Entry: {entry:.2f}</p>
+                    <p><b>SL:</b> {entry+7:.2f} | <b>TP:</b> {entry-21:.2f}</p>
+                    <p><i>H1 Trendline Bearish + T4F Level Hit</i></p>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                exists = any(d['Type'] == 'SELL' and d['Entry'] == f"{result['sell_entry']:.2f}" for d in st.session_state.history)
-                if not exists:
-                    st.session_state.history.append({
-                        "Time": time_status['now'], "Type": "SELL LIMIT", 
-                        "Entry": f"{result['sell_entry']:.2f}", "SL": f"{sell_sl:.2f}", 
-                        "TP": f"{sell_tp:.2f}", "Status": "Pending"
-                    })
-                    
-            elif result['show_buy'] and result['m1_confirmed']:
-                buy_sl = result['buy_entry'] - 7.00
-                buy_tp = result['buy_entry'] + 21.00
+                exists = any(d['Type'] == 'SELL' and d['Entry'] == f"{entry:.2f}" and d['Status'] == 'Pending' for d in st.session_state.history)
+                if not exists: st.session_state.history.append({"Time": time_status['now'], "Type": "SELL", "Entry": f"{entry:.2f}", "SL": f"{entry+7:.2f}", "TP": f"{entry-21:.2f}", "Status": "Pending"})
+
+            # Only give Buy if Trendline is Bullish AND T4F level is close
+            elif trend_bias == "BUY" and time_status['active']:
+                entry = t4f['buy_entry']
                 st.markdown(f"""
                 <div class='buy-card'>
-                    <h1>🟢 PLACE BUY LIMIT NOW</h1>
-                    <p class='big-font'>Entry: {result['buy_entry']:.2f}</p>
-                    <p><b>SL:</b> {buy_sl:.2f} | <b>TP:</b> {buy_tp:.2f}</p>
+                    <h1>🟢 CONFLUENCE BUY</h1>
+                    <p class='big-font'>Entry: {entry:.2f}</p>
+                    <p><b>SL:</b> {entry-7:.2f} | <b>TP:</b> {entry+21:.2f}</p>
+                    <p><i>H1 Trendline Bullish + T4F Level Hit</i></p>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                exists = any(d['Type'] == 'BUY' and d['Entry'] == f"{result['buy_entry']:.2f}" for d in st.session_state.history)
-                if not exists:
-                    st.session_state.history.append({
-                        "Time": time_status['now'], "Type": "BUY LIMIT", 
-                        "Entry": f"{result['buy_entry']:.2f}", "SL": f"{buy_sl:.2f}", 
-                        "TP": f"{buy_tp:.2f}", "Status": "Pending"
-                    })
+                exists = any(d['Type'] == 'BUY' and d['Entry'] == f"{entry:.2f}" and d['Status'] == 'Pending' for d in st.session_state.history)
+                if not exists: st.session_state.history.append({"Time": time_status['now'], "Type": "BUY", "Entry": f"{entry:.2f}", "SL": f"{entry-7:.2f}", "TP": f"{entry+21:.2f}", "Status": "Pending"})
+
             else:
                 st.markdown(f"""
                 <div class='wait-card'>
-                    <h2 style='color: #FFA500;'>⏳ NO PERFECT SETUP YET</h2>
-                    <p>The 15M math and 1M momentum do not align.</p>
-                    <p>Press Scan again at <b>{time_status['next_scan']}</b>.</p>
+                    <h2 style='color: #FFA500;'>⏳ NO CONFLUENCE YET</h2>
+                    <p>Trendline bias is {trend_bias}. T4F Window is {'OPEN' if time_status['active'] else 'LOCKED'}.</p>
+                    <p>The app is protecting you from a rubbish trade. Press Scan again later.</p>
                 </div>
                 """, unsafe_allow_html=True)
 
 st.divider()
-st.subheader("📜 Live Sniper History")
+st.subheader("📜 Confluence History")
 
 if len(st.session_state.history) == 0:
     st.write("No limits placed today.")
 else:
     df_history = pd.DataFrame(st.session_state.history)
     st.dataframe(df_history, use_container_width=True)
+    
+    if st.button("Clear History"):
+        st.session_state.history = []
+        st.rerun()
