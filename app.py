@@ -4,10 +4,44 @@ import pandas as pd
 from datetime import datetime
 import pytz
 
-st.set_page_config(page_title="T4F Sniper + History", page_icon="🎯", layout="centered")
+st.set_page_config(page_title="T4F Epic Sniper", page_icon="🚀", layout="wide")
 
-st.title("🎯 T4F Sniper + History")
-st.write("Exact Math. No Rubbish. Full History.")
+# Custom CSS for a Neon/Prop Firm look
+st.markdown("""
+<style>
+    .reportview-container {
+        background: #0E1117;
+    }
+    .big-font {
+        font-size:30px !important;
+        font-weight: bold;
+        color: #00FFAA;
+    }
+    .sell-card {
+        background-color: rgba(255, 75, 75, 0.1);
+        border-left: 5px solid #FF4B4B;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    .buy-card {
+        background-color: rgba(0, 255, 170, 0.1);
+        border-left: 5px solid #00FFAA;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    .locked-card {
+        background-color: rgba(255, 165, 0, 0.1);
+        border-left: 5px solid orange;
+        padding: 20px;
+        border-radius: 10px;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.title("🚀 T4F Epic Sniper")
+st.write("Protected Prop Firm Execution. Exact Math. Limit Orders Only.")
 
 # Initialize History
 if 'history' not in st.session_state:
@@ -23,26 +57,33 @@ def get_digital_root(price):
     elif digit_sum in [3, 6, 9]: return 18
     return 12
 
-def get_setup():
+def check_time():
     lagos_tz = pytz.timezone('Africa/Lagos')
     now = datetime.now(lagos_tz)
     current_time = now.time()
     
-    # Window Check (14:45 - 15:08)
-    start_time = datetime.strptime("14:45", "%H:%M").time()
-    end_time = datetime.strptime("15:08", "%H:%M").time()
+    w1_start = datetime.strptime("08:03", "%H:%M").time()
+    w1_end = datetime.strptime("08:12", "%H:%M").time()
     
-    if current_time < start_time:
-        return {"status": "LOCKED", "msg": f"Wait until 14:45. Current: {now.strftime('%H:%M')}."}
-    elif current_time > end_time:
-        return {"status": "LOCKED", "msg": f"Window closed at 15:08. Cancel limits."}
+    w2_start = datetime.strptime("14:45", "%H:%M").time()
+    w2_end = datetime.strptime("15:08", "%H:%M").time()
+    
+    in_w1 = w1_start <= current_time <= w1_end
+    in_w2 = w2_start <= current_time <= w2_end
+    
+    return {
+        "now": now.strftime('%H:%M'),
+        "in_w1": in_w1,
+        "in_w2": in_w2,
+        "active": in_w1 or in_w2
+    }
 
-    # Fetch 15M Data
+def get_setup():
     df = yf.download("XAUUSD=X", period="2d", interval="15m", progress=False)
     if df.empty:
          df = yf.download("GC=F", period="2d", interval="15m", progress=False)
     if df.empty:
-        return {"status": "ERROR", "msg": "Could not fetch data."}
+        return {"status": "ERROR", "msg": "Data server offline. Try again."}
         
     df['EMA50'] = df['Close'].ewm(span=50, adjust=False).mean()
     
@@ -57,7 +98,6 @@ def get_setup():
     sell_entry = recent_high - step_high
     buy_entry = recent_low + step_low
     
-    # Trend Filter
     show_sell = current_price < ema50
     show_buy = current_price > ema50
         
@@ -68,94 +108,107 @@ def get_setup():
         "buy_entry": buy_entry,
         "show_sell": show_sell,
         "show_buy": show_buy,
-        "ema50": ema50,
-        "time": now.strftime('%H:%M')
+        "ema50": ema50
     }
 
 # --- UI ---
-st.info("⏰ **Window:** 14:45 - 15:08. Place these as **Limit Orders** on MT5.")
+time_status = check_time()
 
-if st.button("🎯 Scan for Setup", use_container_width=True):
-    with st.spinner("Calculating..."):
-        result = get_setup()
-        
-    if result["status"] == "LOCKED":
-        st.error(f"🚫 **LOCKED**\n\n{result['msg']}")
-    elif result["status"] == "ERROR":
-        st.error(result["msg"])
+# Header Dashboard
+col1, col2 = st.columns(2)
+with col1:
+    st.markdown(f"**Current Time:** `{time_status['now']}` (Nigeria Time)")
+with col2:
+    if time_status['active']:
+        st.markdown("<h3 style='color: #00FFAA;'>🟢 WINDOW IS OPEN</h3>", unsafe_allow_html=True)
     else:
-        st.write(f"**App Live Price:** ${result['price']:.2f} | **50 EMA:** ${result['ema50']:.2f}")
-        st.divider()
-        
-        # SELL SETUP
-        if result['show_sell']:
-            sell_sl = result['sell_entry'] + 7.00
-            sell_tp = result['sell_entry'] - 21.00
-            st.error(f"### 📉 SELL LIMIT\n"
-                     f"**Entry:** {result['sell_entry']:.2f} | **SL:** {sell_sl:.2f} | **TP:** {sell_tp:.2f}")
-            
-            # Save to history
-            exists = any(d['Type'] == 'SELL' and d['Entry'] == f"{result['sell_entry']:.2f}" for d in st.session_state.history)
-            if not exists:
-                st.session_state.history.append({
-                    "Time": result['time'], "Type": "SELL", 
-                    "Entry": f"{result['sell_entry']:.2f}", 
-                    "SL": f"{sell_sl:.2f}", "TP": f"{sell_tp:.2f}", "Status": "Pending"
-                })
-        else:
-            st.info("📉 No Sell Limit (Trend is Bullish - Filtered out)")
+        st.markdown("<h3 style='color: #FF4B4B;'>🔴 WINDOW LOCKED</h3>", unsafe_allow_html=True)
 
-        st.divider()
-        
-        # BUY SETUP
-        if result['show_buy']:
-            buy_sl = result['buy_entry'] - 7.00
-            buy_tp = result['buy_entry'] + 21.00
-            st.success(f"### 📈 BUY LIMIT\n"
-                       f"**Entry:** {result['buy_entry']:.2f} | **SL:** {buy_sl:.2f} | **TP:** {buy_tp:.2f}")
-            
-            # Save to history
-            exists = any(d['Type'] == 'BUY' and d['Entry'] == f"{result['buy_entry']:.2f}" for d in st.session_state.history)
-            if not exists:
-                st.session_state.history.append({
-                    "Time": result['time'], "Type": "BUY", 
-                    "Entry": f"{result['buy_entry']:.2f}", 
-                    "SL": f"{buy_sl:.2f}", "TP": f"{buy_tp:.2f}", "Status": "Pending"
-                })
-        else:
-            st.info("📈 No Buy Limit (Trend is Bearish - Filtered out)")
+st.markdown(f"""
+<div style='display: flex; gap: 20px;'>
+    <div style='flex: 1; padding: 10px; background: #1E1E1E; border-radius: 5px;'>
+        <b>London Window:</b> 08:03 - 08:12 {'(OPEN 🟢)' if time_status['in_w1'] else '(CLOSED 🔴)'}
+    </div>
+    <div style='flex: 1; padding: 10px; background: #1E1E1E; border-radius: 5px;'>
+        <b>New York Window:</b> 14:45 - 15:08 {'(OPEN 🟢)' if time_status['in_w2'] else '(CLOSED 🔴)'}
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
-# --- HISTORY & CHECKER ---
 st.divider()
-st.subheader("📜 Trade History & Checker")
+
+if not time_status['active']:
+    st.markdown("""
+    <div class='locked-card'>
+        <h3>⏳ SCANNER LOCKED</h3>
+        <p>You are outside the T4F Execution Window. Do not trade. Come back at the next window.</p>
+    </div>
+    """, unsafe_allow_html=True)
+else:
+    if st.button("🎯 SCAN FOR SNIPER SETUP", use_container_width=True):
+        with st.spinner("Calculating 369 Math..."):
+            result = get_setup()
+            
+        if result["status"] == "ERROR":
+            st.error(result["msg"])
+        else:
+            st.markdown(f"### Live Price: `${result['price']:.2f}` | 50 EMA: `${result['ema50']:.2f}`")
+            
+            # SELL CARD
+            if result['show_sell']:
+                sell_sl = result['sell_entry'] + 7.00
+                sell_tp = result['sell_entry'] - 21.00
+                st.markdown(f"""
+                <div class='sell-card'>
+                    <h2 style='color: #FF4B4B;'>📉 PLACE SELL LIMIT</h2>
+                    <p><b>Entry Price:</b> <span class='big-font'>{result['sell_entry']:.2f}</span></p>
+                    <p><b>Stop Loss:</b> {sell_sl:.2f} (Risk $7)</p>
+                    <p><b>Take Profit:</b> {sell_tp:.2f} (Reward $21)</p>
+                    <p>👉 <i>Open MT5, select Pending Order -> Sell Limit, and enter these exact numbers.</i></p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                exists = any(d['Type'] == 'SELL' and d['Entry'] == f"{result['sell_entry']:.2f}" for d in st.session_state.history)
+                if not exists:
+                    st.session_state.history.append({
+                        "Time": time_status['now'], "Type": "SELL LIMIT", 
+                        "Entry": f"{result['sell_entry']:.2f}", 
+                        "SL": f"{sell_sl:.2f}", "TP": f"{sell_tp:.2f}", "Status": "Pending"
+                    })
+            else:
+                st.info("📉 Sell Setup Filtered Out (Trend is Bullish)")
+
+            # BUY CARD
+            if result['show_buy']:
+                buy_sl = result['buy_entry'] - 7.00
+                buy_tp = result['buy_entry'] + 21.00
+                st.markdown(f"""
+                <div class='buy-card'>
+                    <h2 style='color: #00FFAA;'>📈 PLACE BUY LIMIT</h2>
+                    <p><b>Entry Price:</b> <span class='big-font'>{result['buy_entry']:.2f}</span></p>
+                    <p><b>Stop Loss:</b> {buy_sl:.2f} (Risk $7)</p>
+                    <p><b>Take Profit:</b> {buy_tp:.2f} (Reward $21)</p>
+                    <p>👉 <i>Open MT5, select Pending Order -> Buy Limit, and enter these exact numbers.</i></p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                exists = any(d['Type'] == 'BUY' and d['Entry'] == f"{result['buy_entry']:.2f}" for d in st.session_state.history)
+                if not exists:
+                    st.session_state.history.append({
+                        "Time": time_status['now'], "Type": "BUY LIMIT", 
+                        "Entry": f"{result['buy_entry']:.2f}", 
+                        "SL": f"{buy_sl:.2f}", "TP": f"{buy_tp:.2f}", "Status": "Pending"
+                    })
+            else:
+                st.info("📈 Buy Setup Filtered Out (Trend is Bearish)")
+
+# --- HISTORY ---
+st.divider()
+st.subheader("📜 Sniper History")
 
 if len(st.session_state.history) == 0:
-    st.write("No setups generated yet today.")
+    st.write("No limits placed today.")
 else:
-    # Auto-checker for past trades
-    df_check = yf.download("XAUUSD=X", period="1d", interval="15m", progress=False)
-    if not df_check.empty:
-        for trade in st.session_state.history:
-            if trade["Status"] == "Pending":
-                entry = float(trade["Entry"])
-                sl = float(trade["SL"])
-                tp = float(trade["TP"])
-                
-                # Check recent highs/lows
-                recent_high = df_check['High'].tail(10).max()
-                recent_low = df_check['Low'].tail(10).min()
-                
-                if trade["Type"] == "SELL":
-                    if recent_high >= entry: # Entry Triggered
-                        if recent_low <= tp: trade["Status"] = "✅ WIN (TP Hit)"
-                        elif recent_high >= sl: trade["Status"] = "❌ LOSS (SL Hit)"
-                        else: trade["Status"] = "⏳ Active"
-                elif trade["Type"] == "BUY":
-                    if recent_low <= entry: # Entry Triggered
-                        if recent_high >= tp: trade["Status"] = "✅ WIN (TP Hit)"
-                        elif recent_low <= sl: trade["Status"] = "❌ LOSS (SL Hit)"
-                        else: trade["Status"] = "⏳ Active"
-
     df_history = pd.DataFrame(st.session_state.history)
     st.dataframe(df_history, use_container_width=True)
     
