@@ -12,26 +12,30 @@ st.title("🇬🇧 London Breakout Scanner (Gold)")
 st.write("Strategy: Asian Range Fakeout + Retest")
 
 def get_signal():
-    # Use Spot Gold to match MT5 closer
-    ticker = "XAUUSD=X"
-    interval = "15m"
+    df = pd.DataFrame()
     
-    df = yf.download(ticker, period="5d", interval=interval, progress=False)
+    # Try Spot Gold first, if it fails, try Gold Futures
+    try:
+        df = yf.download("XAUUSD=X", period="5d", interval="15m", progress=False)
+        if df.empty:
+            raise ValueError("Empty data")
+    except:
+        try:
+            df = yf.download("GC=F", period="5d", interval="15m", progress=False)
+            if df.empty:
+                raise ValueError("Empty data")
+        except:
+            return None # Both failed
     
-    if df.empty:
-        return None
-        
     # 1. Time Filter (Rule 5)
-    # Get current time in Lagos/Nigeria (WAT)
     lagos_tz = pytz.timezone('Africa/Lagos')
     now = datetime.now(lagos_tz)
     current_hour = now.hour
     
-    # Only allow trading between 9:00 AM and 12:00 PM
     if current_hour < 9 or current_hour >= 12:
         return {"status": "TIME_LOCKED", "message": f"Current time is {now.strftime('%H:%M')}. You can only scan between 09:00 and 12:00 Nigeria Time."}
 
-    # 2. Calculate Asian Box (Rule 1: 28 candles = 7 hours)
+    # 2. Calculate Asian Box
     asian_box = df.tail(28)
     box_high = float(asian_box['High'].max().item())
     box_low = float(asian_box['Low'].min().item())
@@ -47,7 +51,6 @@ def get_signal():
     signal = "WAIT"
     entry, sl, tp, reason = 0, 0, 0, ""
     
-    # 3. Rule 3 & 4 Logic
     broke_up = df['High'].iloc[-10:].max().item() > box_high
     broke_down = df['Low'].iloc[-10:].min().item() < box_low
     
@@ -119,4 +122,4 @@ if st.button("🇬🇧 Scan London Breakout", use_container_width=True):
                 st.warning("⏳ **NO SIGNAL - WAIT**")
                 st.write(f"**Reason:** {result['reason']}")
     else:
-        st.error("Could not fetch data. Please try again.")
+        st.error("Both data sources failed. Please try again in 1 minute.")
