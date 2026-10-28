@@ -68,6 +68,14 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+def play_sound():
+    sound_html = """
+    <audio autoplay>
+        <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+    </audio>
+    """
+    st.markdown(sound_html, unsafe_allow_html=True)
+
 if 'history' not in st.session_state:
     st.session_state.history = []
 
@@ -111,20 +119,30 @@ def get_live_price():
         return 0.0
 
 def get_trap_signal():
-    df = yf.download("XAUUSD=X", period="2d", interval="15m", progress=False)
-    if df.empty: df = yf.download("GC=F", period="2d", interval="15m", progress=False)
-    if df.empty: return None
+    df_15m = yf.download("XAUUSD=X", period="2d", interval="15m", progress=False)
+    if df_15m.empty: df_15m = yf.download("GC=F", period="2d", interval="15m", progress=False)
+    if df_15m.empty: return None
         
-    phase3_open = float(df['Open'].iloc[-1].item()) 
-    current_price = float(df['Close'].iloc[-1].item())
+    df_1h = yf.download("XAUUSD=X", period="5d", interval="1h", progress=False)
+    if df_1h.empty: df_1h = yf.download("GC=F", period="5d", interval="1h", progress=False)
     
-    recent_high = float(df['High'].rolling(window=20).max().iloc[-1].item())
-    recent_low = float(df['Low'].rolling(window=20).min().iloc[-1].item())
+    df_1h['EMA50'] = df_1h['Close'].ewm(span=50, adjust=False).mean()
+    current_1h_close = float(df_1h['Close'].iloc[-1].item())
+    current_1h_ema = float(df_1h['EMA50'].iloc[-1].item())
+    
+    phase3_open = float(df_15m['Open'].iloc[-1].item()) 
+    current_price = float(df_15m['Close'].iloc[-1].item())
+    
+    recent_high = float(df_15m['High'].rolling(window=20).max().iloc[-1].item())
+    recent_low = float(df_15m['Low'].rolling(window=20).min().iloc[-1].item())
     
     sell_level = recent_high - get_digital_root(recent_high)
     buy_level = recent_low + get_digital_root(recent_low)
     
     bias = "SELL" if current_price > phase3_open else "BUY"
+    
+    is_macro_bullish = current_1h_close > current_1h_ema
+    is_macro_bearish = current_1h_close < current_1h_ema
     
     return {
         "price": current_price, 
@@ -132,7 +150,9 @@ def get_trap_signal():
         "sell_entry": sell_level, 
         "buy_entry": buy_level,
         "swing_high": recent_high,
-        "swing_low": recent_low
+        "swing_low": recent_low,
+        "macro_bull": is_macro_bullish,
+        "macro_bear": is_macro_bearish
     }
 
 def get_1m_confirmation(direction):
@@ -206,12 +226,12 @@ if st.button("INITIATE SCAN", use_container_width=True):
                 signal = get_trap_signal()
                 
                 if signal:
-                    if signal['bias'] == "SELL":
+                    if signal['bias'] == "SELL" and signal['macro_bear']:
                         if abs(signal['price'] - signal['sell_entry']) <= 5.0 and get_1m_confirmation("SELL"):
                             signal_found = True
-                            entry = signal['sell_entry']
+                            play_sound()
                             
-                            # Trap Dynamic SL
+                            entry = signal['sell_entry']
                             dynamic_sl = signal['swing_high'] + 1.50 
                             sl_dist = dynamic_sl - entry
                             std_tp = entry - (sl_dist * 3)
@@ -262,12 +282,12 @@ if st.button("INITIATE SCAN", use_container_width=True):
                             exists = any(d['Type'] == 'SELL' and d['Entry'] == f"{entry:.2f}" and d['Status'] == 'Pending' for d in st.session_state.history)
                             if not exists: st.session_state.history.append({"Time": time_status['now'], "Type": "SELL", "Entry": f"{entry:.2f}", "SL": f"{dynamic_sl:.2f}", "TP": f"{std_tp:.2f}", "Status": "Pending"})
                             
-                    elif signal['bias'] == "BUY":
+                    elif signal['bias'] == "BUY" and signal['macro_bull']:
                         if abs(signal['price'] - signal['buy_entry']) <= 5.0 and get_1m_confirmation("BUY"):
                             signal_found = True
-                            entry = signal['buy_entry']
+                            play_sound()
                             
-                            # Trap Dynamic SL
+                            entry = signal['buy_entry']
                             dynamic_sl = signal['swing_low'] - 1.50
                             sl_dist = entry - dynamic_sl
                             std_tp = entry + (sl_dist * 3)
@@ -323,7 +343,7 @@ if st.button("INITIATE SCAN", use_container_width=True):
                     <div class='wait-container'>
                         <h3 style='color: #22C55E; margin: 0; font-size: 16px; letter-spacing: 2px;'>SCANNING MARKET</h3>
                         <p style='font-family: "JetBrains Mono", monospace; font-size: 36px; font-weight: 700; color: #FAFAFA; margin: 15px 0;'>{signal['price']:.2f}</p>
-                        <p style='color: #71717A; font-size: 13px; letter-spacing: 1px;'>Awaiting institutional trap sequence.</p>
+                        <p style='color: #71717A; font-size: 13px; letter-spacing: 1px;'>Awaiting institutional trap sequence & 1H alignment.</p>
                     </div>
                     """, unsafe_allow_html=True)
             
