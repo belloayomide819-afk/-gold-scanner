@@ -5,68 +5,81 @@ from datetime import datetime, timedelta
 import pytz
 import time
 
-st.set_page_config(page_title="T4F Terminal", page_icon="◈", layout="wide")
+# Page Config
+st.set_page_config(page_title="T4F Gold Terminal", page_icon="⚜️", layout="wide")
 
+# Custom Premium CSS
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@700&display=swap');
     
     /* Global Base */
-    .stApp { background-color: #050505; color: #FAFAFA; font-family: 'Inter', sans-serif; }
+    .stApp { background-color: #000000; color: #FFFFFF; font-family: 'Inter', sans-serif; }
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
     
     /* Top Ticker Bar */
     .ticker-bar {
         background-color: #0A0A0A; border-bottom: 1px solid #1F1F1F;
-        padding: 12px 20px; display: flex; justify-content: space-between;
-        align-items: center; font-size: 12px; font-weight: 600; color: #A1A1AA;
-        margin-top: -60px; margin-bottom: 25px;
+        padding: 15px 20px; display: flex; justify-content: space-between;
+        align-items: center; font-size: 13px; font-weight: 600; color: #A1A1AA;
+        margin-top: -60px; margin-bottom: 30px;
     }
-    .ticker-green { color: #22C55E; }
-    .ticker-red { color: #EF4444; }
+    .status-open { color: #10B981; }
+    .status-closed { color: #EF4444; }
     
-    /* Dashboard Metrics */
+    /* Logo */
+    .logo-container { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 800; color: #FFFFFF; letter-spacing: 1px;}
+    .logo-icon { color: #F59E0B; font-size: 22px; }
+    
+    /* Dashboard Cards */
     .metric-card {
         background-color: #0A0A0A; border: 1px solid #1F1F1F;
         border-radius: 12px; padding: 20px; text-align: center;
     }
-    .metric-value { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 700; margin: 0; }
+    .metric-value { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700; margin: 0; }
     .metric-label { font-size: 11px; color: #71717A; text-transform: uppercase; letter-spacing: 1.5px; margin-top: 8px; font-weight: 600;}
     
-    /* Action Button */
+    /* Primary Button */
     .stButton > button {
-        background: #FAFAFA; color: #050505; 
-        border: none; border-radius: 8px; padding: 15px 30px; 
-        font-weight: 700; font-size: 15px; transition: all 0.2s; 
+        background: #FFFFFF; color: #000000; 
+        border: none; border-radius: 8px; padding: 16px 30px; 
+        font-weight: 800; font-size: 16px; transition: all 0.2s; 
         width: 100%; margin-top: 10px; letter-spacing: 1px;
     }
-    .stButton > button:hover { background: #D4D4D8; color: #050505; }
+    .stButton > button:hover { background: #D4D4D8; color: #000000; }
     
     /* Signal Card */
     .signal-card { 
         background-color: #0A0A0A; border: 1px solid #1F1F1F; 
-        border-radius: 12px; padding: 25px; margin-top: 20px; 
+        border-radius: 16px; padding: 30px; margin-top: 25px; 
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
     }
-    .trade-badge-sell { background: #270C0C; color: #EF4444; border: 1px solid #7F1D1D; padding: 6px 16px; border-radius: 6px; font-weight: 700; font-size: 13px; letter-spacing: 1px;}
-    .trade-badge-buy { background: #0A1F13; color: #22C55E; border: 1px solid #14532D; padding: 6px 16px; border-radius: 6px; font-weight: 700; font-size: 13px; letter-spacing: 1px;}
+    .badge-sell { background: rgba(239, 68, 68, 0.1); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.2); padding: 8px 20px; border-radius: 8px; font-weight: 800; font-size: 14px; letter-spacing: 1px;}
+    .badge-buy { background: rgba(16, 185, 129, 0.1); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.2); padding: 8px 20px; border-radius: 8px; font-weight: 800; font-size: 14px; letter-spacing: 1px;}
     
     /* Data Rows */
     .data-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #1F1F1F; }
     .data-label { color: #71717A; font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px;}
     .data-value { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; }
     
-    /* Account Boxes */
-    .account-box { background: #111111; border: 1px solid #1F1F1F; border-radius: 8px; padding: 16px; margin-top: 12px; }
-    .std-box { border-left: 2px solid #22C55E; }
-    .cent-box { border-left: 2px solid #EAB308; }
+    /* Execution Boxes */
+    .exec-box { background: #111111; border: 1px solid #1F1F1F; border-radius: 8px; padding: 16px; margin-top: 15px; }
+    .std-box { border-left: 3px solid #10B981; }
+    .cent-box { border-left: 3px solid #F59E0B; }
     
     /* Waiting State */
     .wait-container {
         background-color: #0A0A0A; border: 1px dashed #27272A;
-        border-radius: 12px; padding: 40px 20px; text-align: center; margin-top: 20px;
+        border-radius: 12px; padding: 50px 20px; text-align: center; margin-top: 20px;
     }
 </style>
 """, unsafe_allow_html=True)
+
+# Initialize session state
+if 'history' not in st.session_state:
+    st.session_state.history = []
+if 'is_scanning' not in st.session_state:
+    st.session_state.is_scanning = False
 
 def play_sound():
     sound_html = """
@@ -75,9 +88,6 @@ def play_sound():
     </audio>
     """
     st.markdown(sound_html, unsafe_allow_html=True)
-
-if 'history' not in st.session_state:
-    st.session_state.history = []
 
 def get_digital_root(price):
     integer_part = int(price)
@@ -102,10 +112,10 @@ def check_time():
     
     if in_w1 or in_w2:
         session_text = "SESSION OPEN"
-        session_class = "ticker-green"
+        session_class = "status-open"
     else:
         session_text = "MARKET CLOSED"
-        session_class = "ticker-red"
+        session_class = "status-closed"
         
     return {"now": now.strftime('%H:%M'), "active": in_w1 or in_w2, "session_text": session_text, "session_class": session_class}
 
@@ -165,47 +175,88 @@ def get_1m_confirmation(direction):
     if direction == "BUY" and last_c['Close'] > prev_c['Open']: return True
     return False
 
+def update_history(live_price):
+    for trade in st.session_state.history:
+        if trade["Status"] == "PENDING":
+            entry = float(trade["Entry"])
+            sl = float(trade["SL"])
+            tp = float(trade["TP"])
+            
+            # Check if pending order was triggered
+            if trade["Type"] == "SELL" and live_price >= entry: trade["Status"] = "ACTIVE"
+            elif trade["Type"] == "BUY" and live_price <= entry: trade["Status"] = "ACTIVE"
+                
+        elif trade["Status"] == "ACTIVE":
+            entry = float(trade["Entry"])
+            sl = float(trade["SL"])
+            tp = float(trade["TP"])
+            
+            # Check if TP or SL hit
+            if trade["Type"] == "SELL":
+                if live_price >= sl: trade["Status"] = "❌ LOSS"
+                elif live_price <= tp: trade["Status"] = "✅ WIN"
+            elif trade["Type"] == "BUY":
+                if live_price <= sl: trade["Status"] = "❌ LOSS"
+                elif live_price >= tp: trade["Status"] = "✅ WIN"
+
 # --- TOP TICKER BAR ---
 time_status = check_time()
 live_price = get_live_price()
+update_history(live_price)
 
 st.markdown(f"""
 <div class='ticker-bar'>
-    <div>XAUUSD <span class='ticker-green'>● LIVE</span></div>
+    <div class='logo-container'>
+        <span class='logo-icon'>⚜️</span> T4F TERMINAL
+    </div>
     <div class='{time_status["session_class"]}'>{time_status["session_text"]}</div>
-    <div>{time_status['now']} WAT</div>
+    <div style='color: #FFF;'>XAUUSD <span class='{time_status["session_class"]}'>{live_price:.2f}</span></div>
 </div>
 """, unsafe_allow_html=True)
 
-# --- DASHBOARD STATS ---
-st.markdown("<h4 style='color: #71717A; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase;'>Account Performance</h4>", unsafe_allow_html=True)
+# --- PERFORMANCE DASHBOARD ---
+st.markdown("<h4 style='color: #71717A; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 15px;'>Account Performance</h4>", unsafe_allow_html=True)
 
-wins = sum(1 for t in st.session_state.history if "Win" in t["Status"])
-losses = sum(1 for t in st.session_state.history if "Loss" in t["Status"])
-net_usd = (wins * 21) - (losses * 7) 
+wins = sum(1 for t in st.session_state.history if "WIN" in t["Status"])
+losses = sum(1 for t in st.session_state.history if "LOSS" in t["Status"])
+total_trades = wins + losses
+
+# Calculate Profit based on actual TP/SL distances recorded
+net_usd = 0
+for t in st.session_state.history:
+    if t["Status"] == "✅ WIN":
+        # Approximate profit in USD for 0.01 lot Standard
+        dist = abs(float(t["TP"]) - float(t["Entry"]))
+        net_usd += (dist * 1) # $1 per point for 0.01 lot
+    elif t["Status"] == "❌ LOSS":
+        dist = abs(float(t["SL"]) - float(t["Entry"]))
+        net_usd -= (dist * 1)
+
 net_ngn = net_usd * 1500
-win_rate = (wins / (wins + losses) * 100) if (wins + losses) > 0 else 0
+win_rate = (wins / total_trades * 100) if total_trades > 0 else 0
 
 st.markdown(f"""
-<div style='display: flex; gap: 12px; margin-bottom: 25px;'>
-    <div class='metric-card' style='flex: 1;'><p class='metric-value' style='color: #FAFAFA;'>${net_usd}</p><p class='metric-label'>Net Profit</p></div>
-    <div class='metric-card' style='flex: 1;'><p class='metric-value' style='color: #FAFAFA;'>₦{net_ngn:,.0f}</p><p class='metric-label'>Naira Value</p></div>
-    <div class='metric-card' style='flex: 1;'><p class='metric-value' style='color: #FAFAFA;'>{win_rate:.0f}%</p><p class='metric-label'>Win Rate</p></div>
+<div style='display: flex; gap: 12px; margin-bottom: 30px;'>
+    <div class='metric-card' style='flex: 1;'><p class='metric-value' style='color: #FFFFFF;'>${net_usd:.2f}</p><p class='metric-label'>Net Profit</p></div>
+    <div class='metric-card' style='flex: 1;'><p class='metric-value' style='color: #FFFFFF;'>₦{net_ngn:,.0f}</p><p class='metric-label'>Naira Value</p></div>
+    <div class='metric-card' style='flex: 1;'><p class='metric-value' style='color: #FFFFFF;'>{win_rate:.0f}%</p><p class='metric-label'>Win Rate</p></div>
+    <div class='metric-card' style='flex: 1;'><p class='metric-value' style='color: #FFFFFF;'>{total_trades}</p><p class='metric-label'>Total Trades</p></div>
 </div>
 """, unsafe_allow_html=True)
 
-# --- MAIN LOGIC ---
-st.markdown("<h4 style='color: #71717A; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase;'>Terminal Engine</h4>", unsafe_allow_html=True)
+# --- TERMINAL ENGINE ---
+st.markdown("<h4 style='color: #71717A; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 15px;'>Terminal Engine</h4>", unsafe_allow_html=True)
 
-if st.button("INITIATE SCAN", use_container_width=True):
+if st.button("SCAN MARKET", use_container_width=True, disabled=st.session_state.is_scanning):
     if not time_status['active']:
         st.markdown(f"""
-        <div style='background-color: #270C0C; border: 1px solid #7F1D1D; border-radius: 8px; padding: 16px; margin-top: 15px;'>
-            <p style='color: #EF4444; font-weight: 700; font-size: 14px; margin: 0;'>EXECUTION LOCKED</p>
-            <p style='color: #A1A1AA; font-size: 13px; margin: 5px 0 0 0;'>Current time: {time_status['now']}. Please wait for the London (08:03) or NY (14:45) session.</p>
+        <div style='background-color: rgba(239, 68, 68, 0.1); border: 1px solid #EF4444; border-radius: 8px; padding: 20px; margin-top: 15px;'>
+            <p style='color: #EF4444; font-weight: 800; font-size: 15px; margin: 0; letter-spacing: 1px;'>EXECUTION LOCKED</p>
+            <p style='color: #A1A1AA; font-size: 13px; margin: 8px 0 0 0;'>Current time: {time_status['now']}. Please wait for the London (08:03) or NY (14:45) session.</p>
         </div>
         """, unsafe_allow_html=True)
     else:
+        st.session_state.is_scanning = True
         placeholder = st.empty()
         signal_found = False
         start_time = datetime.now()
@@ -216,8 +267,8 @@ if st.button("INITIATE SCAN", use_container_width=True):
                 with placeholder.container(): 
                     st.markdown("""
                     <div class='wait-container'>
-                        <h3 style='color: #A1A1AA; margin: 0;'>SESSION ENDED</h3>
-                        <p style='color: #71717A; font-size: 13px; margin-top: 8px;'>No valid setups found in this window.</p>
+                        <h3 style='color: #A1A1AA; margin: 0; letter-spacing: 1px;'>SESSION ENDED</h3>
+                        <p style='color: #71717A; font-size: 13px; margin-top: 8px;'>No valid setups found. Wait for the next session.</p>
                     </div>
                     """, unsafe_allow_html=True)
                 break
@@ -238,17 +289,17 @@ if st.button("INITIATE SCAN", use_container_width=True):
                             
                             st.markdown(f"""
                             <div class='signal-card'>
-                                <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;'>
+                                <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;'>
                                     <div>
-                                        <h2 style='margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 1px;'>XAUUSD</h2>
-                                        <p style='color: #71717A; margin: 2px 0 0 0; font-size: 12px; letter-spacing: 1px;'>TRAP & LIMIT</p>
+                                        <h2 style='margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 1px;'>XAUUSD</h2>
+                                        <p style='color: #71717A; margin: 4px 0 0 0; font-size: 13px; letter-spacing: 1px;'>T4F TRAP & LIMIT</p>
                                     </div>
-                                    <div class='trade-badge-sell'>SELL LIMIT</div>
+                                    <div class='badge-sell'>SELL LIMIT</div>
                                 </div>
                                 
                                 <div class='data-row' style='border-top: 1px solid #1F1F1F;'>
                                     <span class='data-label'>Entry Limit</span>
-                                    <span class='data-value' style='color: #FAFAFA;'>{entry:.2f}</span>
+                                    <span class='data-value' style='color: #FFFFFF;'>{entry:.2f}</span>
                                 </div>
                                 <div class='data-row'>
                                     <span class='data-label'>Stop Loss</span>
@@ -256,31 +307,35 @@ if st.button("INITIATE SCAN", use_container_width=True):
                                 </div>
                                 <div class='data-row'>
                                     <span class='data-label'>Take Profit</span>
-                                    <span class='data-value' style='color: #22C55E;'>{std_tp:.2f}</span>
+                                    <span class='data-value' style='color: #10B981;'>{std_tp:.2f}</span>
+                                </div>
+                                <div class='data-row' style='border-bottom: none;'>
+                                    <span class='data-label'>Risk : Reward</span>
+                                    <span class='data-value' style='color: #F59E0B; font-size: 16px;'>1 : 3</span>
                                 </div>
                                 
                                 <div style='margin-top: 25px;'>
-                                    <div class='account-box std-box'>
+                                    <div class='exec-box std-box'>
                                         <div style='display: flex; justify-content: space-between; margin-bottom: 8px;'>
-                                            <span style='color: #FAFAFA; font-weight: 600; font-size: 13px;'>Standard Account</span>
+                                            <span style='color: #FFFFFF; font-weight: 700; font-size: 14px;'>Standard Account</span>
                                             <span style='color: #71717A; font-weight: 600; font-size: 12px;'>0.01 LOTS</span>
                                         </div>
-                                        <p style='margin: 0; font-size: 13px; color: #A1A1AA;'>SL: <b style='color:#FAFAFA;'>{dynamic_sl:.2f}</b> | TP: <b style='color:#FAFAFA;'>{std_tp:.2f}</b></p>
+                                        <p style='margin: 0; font-size: 14px; color: #A1A1AA;'>SL: <b style='color:#FFF;'>{dynamic_sl:.2f}</b> | TP: <b style='color:#FFF;'>{std_tp:.2f}</b></p>
                                     </div>
                                     
-                                    <div class='account-box cent-box'>
+                                    <div class='exec-box cent-box'>
                                         <div style='display: flex; justify-content: space-between; margin-bottom: 8px;'>
-                                            <span style='color: #FAFAFA; font-weight: 600; font-size: 13px;'>Cent Account</span>
+                                            <span style='color: #FFFFFF; font-weight: 700; font-size: 14px;'>Cent Account</span>
                                             <span style='color: #71717A; font-weight: 600; font-size: 12px;'>1.00 LOTS</span>
                                         </div>
-                                        <p style='margin: 0; font-size: 13px; color: #A1A1AA;'>SL: <b style='color:#FAFAFA;'>{dynamic_sl:.2f}</b> | TP: <b style='color:#FAFAFA;'>{std_tp:.2f}</b></p>
+                                        <p style='margin: 0; font-size: 14px; color: #A1A1AA;'>SL: <b style='color:#FFF;'>{dynamic_sl:.2f}</b> | TP: <b style='color:#FFF;'>{std_tp:.2f}</b></p>
                                     </div>
                                 </div>
                             </div>
                             """, unsafe_allow_html=True)
                             
-                            exists = any(d['Type'] == 'SELL' and d['Entry'] == f"{entry:.2f}" and d['Status'] == 'Pending' for d in st.session_state.history)
-                            if not exists: st.session_state.history.append({"Time": time_status['now'], "Type": "SELL", "Entry": f"{entry:.2f}", "SL": f"{dynamic_sl:.2f}", "TP": f"{std_tp:.2f}", "Status": "Pending"})
+                            exists = any(d['Type'] == 'SELL' and d['Entry'] == f"{entry:.2f}" and d['Status'] == 'PENDING' for d in st.session_state.history)
+                            if not exists: st.session_state.history.append({"Time": time_status['now'], "Type": "SELL", "Entry": f"{entry:.2f}", "SL": f"{dynamic_sl:.2f}", "TP": f"{std_tp:.2f}", "Status": "PENDING"})
                             
                     elif signal['bias'] == "BUY" and signal['macro_bull']:
                         if abs(signal['price'] - signal['buy_entry']) <= 5.0 and get_1m_confirmation("BUY"):
@@ -294,17 +349,17 @@ if st.button("INITIATE SCAN", use_container_width=True):
                             
                             st.markdown(f"""
                             <div class='signal-card'>
-                                <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;'>
+                                <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;'>
                                     <div>
-                                        <h2 style='margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 1px;'>XAUUSD</h2>
-                                        <p style='color: #71717A; margin: 2px 0 0 0; font-size: 12px; letter-spacing: 1px;'>TRAP & LIMIT</p>
+                                        <h2 style='margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 1px;'>XAUUSD</h2>
+                                        <p style='color: #71717A; margin: 4px 0 0 0; font-size: 13px; letter-spacing: 1px;'>T4F TRAP & LIMIT</p>
                                     </div>
-                                    <div class='trade-badge-buy'>BUY LIMIT</div>
+                                    <div class='badge-buy'>BUY LIMIT</div>
                                 </div>
                                 
                                 <div class='data-row' style='border-top: 1px solid #1F1F1F;'>
                                     <span class='data-label'>Entry Limit</span>
-                                    <span class='data-value' style='color: #FAFAFA;'>{entry:.2f}</span>
+                                    <span class='data-value' style='color: #FFFFFF;'>{entry:.2f}</span>
                                 </div>
                                 <div class='data-row'>
                                     <span class='data-label'>Stop Loss</span>
@@ -312,56 +367,76 @@ if st.button("INITIATE SCAN", use_container_width=True):
                                 </div>
                                 <div class='data-row'>
                                     <span class='data-label'>Take Profit</span>
-                                    <span class='data-value' style='color: #22C55E;'>{std_tp:.2f}</span>
+                                    <span class='data-value' style='color: #10B981;'>{std_tp:.2f}</span>
+                                </div>
+                                <div class='data-row' style='border-bottom: none;'>
+                                    <span class='data-label'>Risk : Reward</span>
+                                    <span class='data-value' style='color: #F59E0B; font-size: 16px;'>1 : 3</span>
                                 </div>
                                 
                                 <div style='margin-top: 25px;'>
-                                    <div class='account-box std-box'>
+                                    <div class='exec-box std-box'>
                                         <div style='display: flex; justify-content: space-between; margin-bottom: 8px;'>
-                                            <span style='color: #FAFAFA; font-weight: 600; font-size: 13px;'>Standard Account</span>
+                                            <span style='color: #FFFFFF; font-weight: 700; font-size: 14px;'>Standard Account</span>
                                             <span style='color: #71717A; font-weight: 600; font-size: 12px;'>0.01 LOTS</span>
                                         </div>
-                                        <p style='margin: 0; font-size: 13px; color: #A1A1AA;'>SL: <b style='color:#FAFAFA;'>{dynamic_sl:.2f}</b> | TP: <b style='color:#FAFAFA;'>{std_tp:.2f}</b></p>
+                                        <p style='margin: 0; font-size: 14px; color: #A1A1AA;'>SL: <b style='color:#FFF;'>{dynamic_sl:.2f}</b> | TP: <b style='color:#FFF;'>{std_tp:.2f}</b></p>
                                     </div>
                                     
-                                    <div class='account-box cent-box'>
+                                    <div class='exec-box cent-box'>
                                         <div style='display: flex; justify-content: space-between; margin-bottom: 8px;'>
-                                            <span style='color: #FAFAFA; font-weight: 600; font-size: 13px;'>Cent Account</span>
+                                            <span style='color: #FFFFFF; font-weight: 700; font-size: 14px;'>Cent Account</span>
                                             <span style='color: #71717A; font-weight: 600; font-size: 12px;'>1.00 LOTS</span>
                                         </div>
-                                        <p style='margin: 0; font-size: 13px; color: #A1A1AA;'>SL: <b style='color:#FAFAFA;'>{dynamic_sl:.2f}</b> | TP: <b style='color:#FAFAFA;'>{std_tp:.2f}</b></p>
+                                        <p style='margin: 0; font-size: 14px; color: #A1A1AA;'>SL: <b style='color:#FFF;'>{dynamic_sl:.2f}</b> | TP: <b style='color:#FFF;'>{std_tp:.2f}</b></p>
                                     </div>
                                 </div>
                             </div>
                             """, unsafe_allow_html=True)
                             
-                            exists = any(d['Type'] == 'BUY' and d['Entry'] == f"{entry:.2f}" and d['Status'] == 'Pending' for d in st.session_state.history)
-                            if not exists: st.session_state.history.append({"Time": time_status['now'], "Type": "BUY", "Entry": f"{entry:.2f}", "SL": f"{dynamic_sl:.2f}", "TP": f"{std_tp:.2f}", "Status": "Pending"})
+                            exists = any(d['Type'] == 'BUY' and d['Entry'] == f"{entry:.2f}" and d['Status'] == 'PENDING' for d in st.session_state.history)
+                            if not exists: st.session_state.history.append({"Time": time_status['now'], "Type": "BUY", "Entry": f"{entry:.2f}", "SL": f"{dynamic_sl:.2f}", "TP": f"{std_tp:.2f}", "Status": "PENDING"})
 
                 if not signal_found:
                     st.markdown(f"""
                     <div class='wait-container'>
-                        <h3 style='color: #22C55E; margin: 0; font-size: 16px; letter-spacing: 2px;'>SCANNING MARKET</h3>
-                        <p style='font-family: "JetBrains Mono", monospace; font-size: 36px; font-weight: 700; color: #FAFAFA; margin: 15px 0;'>{signal['price']:.2f}</p>
-                        <p style='color: #71717A; font-size: 13px; letter-spacing: 1px;'>Awaiting institutional trap sequence & 1H alignment.</p>
+                        <h3 style='color: #F59E0B; margin: 0; font-size: 16px; letter-spacing: 2px;'>SCANNING MARKET</h3>
+                        <p style='font-family: "JetBrains Mono", monospace; font-size: 42px; font-weight: 700; color: #FFFFFF; margin: 15px 0;'>{signal['price']:.2f}</p>
+                        <p style='color: #71717A; font-size: 13px; letter-spacing: 1px;'>Awaiting 1H macro alignment & 1M confirmation...</p>
                     </div>
                     """, unsafe_allow_html=True)
             
             if not signal_found:
                 time.sleep(3)
+        
+        st.session_state.is_scanning = False
+        st.rerun()
 
-# --- HISTORY TABLE ---
-st.markdown("<h4 style='color: #71717A; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 30px;'>Execution History</h4>", unsafe_allow_html=True)
+# --- EXECUTION HISTORY ---
+st.markdown("<h4 style='color: #71717A; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 40px; margin-bottom: 15px;'>Execution History</h4>", unsafe_allow_html=True)
 
 if len(st.session_state.history) == 0:
     st.markdown("""
-    <div style='border: 1px dashed #27272A; border-radius: 8px; padding: 20px; text-align: center;'>
-        <p style='color: #71717A; font-size: 13px; margin: 0; letter-spacing: 1px;'>NO SIGNALS GENERATED</p>
+    <div style='border: 1px dashed #27272A; border-radius: 8px; padding: 40px; text-align: center;'>
+        <p style='color: #71717A; font-size: 14px; margin: 0; letter-spacing: 1px;'>NO SIGNALS GENERATED YET</p>
+        <p style='color: #52525B; font-size: 12px; margin: 8px 0 0 0;'>Scans will appear here once a valid setup is found.</p>
     </div>
     """, unsafe_allow_html=True)
 else:
-    df_history = pd.DataFrame(st.session_state.history)
-    st.dataframe(df_history, use_container_width=True)
-    if st.button("CLEAR LOGS"):
+    # Format the history for display
+    display_data = []
+    for t in reversed(st.session_state.history):
+        display_data.append({
+            "Time": t["Time"],
+            "Type": t["Type"],
+            "Entry": t["Entry"],
+            "SL": t["SL"],
+            "TP": t["TP"],
+            "Status": t["Status"]
+        })
+    df_history = pd.DataFrame(display_data)
+    st.dataframe(df_history, use_container_width=True, hide_index=True)
+    
+    if st.button("CLEAR HISTORY", use_container_width=True):
         st.session_state.history = []
         st.rerun()
